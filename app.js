@@ -178,6 +178,8 @@
     document.getElementById("progressFill").style.width = pct + "%";
   }
 
+  let lastRenderedCustomerId = null;
+
   function renderQueueView() {
     const current = getCurrentCustomer();
     const total = CUSTOMERS.length;
@@ -207,16 +209,19 @@
     document.getElementById("registriesValue").textContent =
       `${current.registries} across ${current.mauza_count} mauza${Number(current.mauza_count) > 1 ? "s" : ""}`;
 
-    // reset phone reveal + note for new card
-    document.getElementById("revealBtn").style.display = "flex";
+    const isNewCustomer = lastRenderedCustomerId !== current.id;
+    if (isNewCustomer) {
+      // reset phone reveal + note only when moving to a different card
+      document.getElementById("revealBtn").style.display = "flex";
+      document.getElementById("phoneLink").style.display = "none";
+      document.getElementById("noteInput").value = "";
+      noteDraft = "";
+      lastRenderedCustomerId = current.id;
+    }
+
     const phoneLink = document.getElementById("phoneLink");
-    phoneLink.style.display = "none";
     phoneLink.href = "tel:" + current.phone.replace(/-/g, "");
     phoneLink.textContent = "☎ " + current.phone;
-
-    const noteInput = document.getElementById("noteInput");
-    noteInput.value = "";
-    noteDraft = "";
 
     document.getElementById("remainingNote").textContent = `${total - done} remaining in register`;
 
@@ -227,6 +232,12 @@
     const current = getCurrentCustomer();
     if (!current) return;
     const noteToSave = noteDraft.trim();
+
+    if (!noteToSave) {
+      showToast("Please add a note before submitting");
+      document.getElementById("noteInput").focus();
+      return;
+    }
 
     // optimistic UI update
     progress[current.id] = {

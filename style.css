@@ -177,9 +177,19 @@ button {
   letter-spacing: 0.5px;
 }
 
+.note-label {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #a39a87;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 500;
+}
+.required-mark { color: #b1503f; }
+
 .note-input {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 6px;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid #e2dcc9;
