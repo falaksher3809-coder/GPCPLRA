@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Call Register — Tehsil Bhera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="loading" class="loading-wrap">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading register…</div>
+  </div>
+
+  <div id="app" class="page" style="display:none;">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-row">
+          <div class="ledger-mark">
+            <div class="ledger-line"></div>
+            <div class="ledger-line"></div>
+            <div class="ledger-line"></div>
+          </div>
+          <div>
+            <div class="brand-title">Call Register</div>
+            <div class="brand-sub">Tehsil Bhera · Customer Contact Ledger</div>
+          </div>
+        </div>
+        <div class="tab-row">
+          <button id="tabQueue" class="tab-btn tab-btn-active">Call Queue</button>
+          <button id="tabDashboard" class="tab-btn">Register Summary</button>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div id="progressFill" class="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- QUEUE VIEW -->
+    <div id="queueView" class="container">
+      <div id="entryLabel" class="entry-label"></div>
+
+      <div id="queueCard" class="card">
+        <div class="card-header-row">
+          <div id="serialBadge" class="serial-badge"></div>
+          <div id="roleTag" class="role-tag"></div>
+        </div>
+
+        <div class="name-block">
+          <div id="customerName" class="customer-name"></div>
+          <div id="fatherName" class="father-name"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="detail-grid">
+          <div class="detail-row">
+            <div class="detail-icon">#</div>
+            <div class="detail-body">
+              <div class="detail-label">CNIC</div>
+              <div id="cnicValue" class="detail-value mono"></div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-icon">⌖</div>
+            <div class="detail-body">
+              <div class="detail-label">Mauza</div>
+              <div id="mauzaValue" class="detail-value rtl"></div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-icon">▤</div>
+            <div class="detail-body">
+              <div class="detail-label">Registries</div>
+              <div id="registriesValue" class="detail-value"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="phone-section">
+          <button id="revealBtn" class="reveal-btn">☎ Show phone number</button>
+          <a id="phoneLink" class="phone-link" style="display:none;" href="#"></a>
+        </div>
+      </div>
+
+      <textarea id="noteInput" class="note-input" rows="2" placeholder="Optional note about this call…"></textarea>
+
+      <div class="action-row">
+        <button id="connectedBtn" class="action-btn connected-btn">✓ Connected</button>
+        <button id="notConnectedBtn" class="action-btn not-connected-btn">✕ Not Connected</button>
+      </div>
+
+      <button id="skipBtn" class="skip-btn">⏭ Skip for now</button>
+
+      <div id="remainingNote" class="remaining-note"></div>
+    </div>
+
+    <!-- DONE STATE -->
+    <div id="doneView" class="container" style="display:none;">
+      <div class="done-card">
+        <div class="done-icon">✓</div>
+        <div class="done-title">Register complete</div>
+        <div id="doneSub" class="done-sub"></div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboardView" class="container" style="display:none;">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div id="statTotal" class="stat-value" style="color:#5c5647;"></div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+          <div id="statConnected" class="stat-value" style="color:#5b7a5f;"></div>
+          <div class="stat-label">Connected</div>
+        </div>
+        <div class="stat-card">
+          <div id="statNotConnected" class="stat-value" style="color:#b1503f;"></div>
+          <div class="stat-label">Not Connected</div>
+        </div>
+        <div class="stat-card">
+          <div id="statPending" class="stat-value" style="color:#a89a7d;"></div>
+          <div class="stat-label">Pending</div>
+        </div>
+      </div>
+
+      <div class="dash-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">⚲</span>
+          <input id="searchInput" class="search-input" placeholder="Search name, phone, or ID…" />
+        </div>
+        <div class="filter-group">
+          <button class="filter-chip filter-chip-active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="connected">Connected</button>
+          <button class="filter-chip" data-filter="not_connected">Not Connected</button>
+          <button class="filter-chip" data-filter="pending">Pending</button>
+        </div>
+        <button id="exportBtn" class="export-btn">⭳ Export CSV</button>
+      </div>
+
+      <div id="listContainer" class="list"></div>
+    </div>
+
+    <div id="toast" class="toast" style="display:none;"></div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
