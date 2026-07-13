@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحصیل بھیرہ — سروے رپورٹ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink:#1c1a16;
+    --paper:#f5efe2;
+    --paper-2:#ece2ca;
+    --brass:#a9762f;
+    --brass-dark:#7a521e;
+    --teal:#1f5c56;
+    --teal-dark:#123f3b;
+    --clay:#b34a35;
+    --line: rgba(28,26,22,0.14);
+    --shadow: 0 10px 30px rgba(28,20,10,0.14);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 8%, rgba(169,118,47,0.10), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(31,92,86,0.10), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans Arabic','Noto Nastaliq Urdu',sans-serif;
+    min-height:100vh;
+  }
+
+  /* Decorative border texture */
+  .top-band{
+    height:10px;
+    background: repeating-linear-gradient(90deg, var(--brass) 0 18px, var(--teal) 18px 36px, var(--clay) 36px 54px);
+    opacity:0.85;
+  }
+
+  header{
+    padding:48px 24px 32px;
+    text-align:center;
+    position:relative;
+    border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, var(--paper-2), var(--paper));
+  }
+  header .kicker{
+    font-size:15px;
+    letter-spacing:0.08em;
+    color:var(--brass-dark);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  header h1{
+    font-family:'Noto Nastaliq Urdu', serif;
+    font-size:52px;
+    line-height:1.3;
+    margin:0 0 10px;
+    color:var(--teal-dark);
+    font-weight:700;
+  }
+  header p.sub{
+    font-size:17px;
+    color:#4b4536;
+    margin:0;
+  }
+  header .stamp{
+    display:inline-flex;
+    gap:28px;
+    margin-top:26px;
+    padding:14px 30px;
+    background:var(--paper);
+    border:1px solid var(--brass);
+    border-radius:6px;
+    box-shadow: var(--shadow);
+  }
+  .stamp .item{ text-align:center; }
+  .stamp .num{ font-size:26px; font-weight:700; color:var(--teal-dark); display:block; }
+  .stamp .lbl{ font-size:13px; color:#6b6350; }
+
+  main{
+    max-width:1180px;
+    margin:0 auto;
+    padding:36px 20px 80px;
+  }
+
+  section{ margin-bottom:56px; }
+
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:18px;
+    border-bottom:2px solid var(--brass);
+    padding-bottom:10px;
+  }
+  .section-head h2{
+    font-family:'Noto Nastaliq Urdu', serif;
+    font-size:30px;
+    color:var(--teal-dark);
+    margin:0;
+  }
+  .section-head .count{
+    font-size:14px;
+    color:var(--brass-dark);
+    font-weight:600;
+  }
+
+  .legend{
+    display:flex;
+    gap:18px;
+    margin-bottom:16px;
+    font-size:14px;
+    flex-wrap:wrap;
+  }
+  .legend .dot{ width:11px; height:11px; border-radius:2px; display:inline-block; margin-inline-start:6px; vertical-align:middle;}
+  .legend .lg-item{ display:flex; align-items:center; color:#4b4536; }
+
+  .status-inprogress { background:var(--clay); }
+  .status-survey { background:var(--teal); }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--paper);
+    box-shadow:var(--shadow);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  thead th{
+    background:var(--teal-dark);
+    color:var(--paper);
+    font-weight:600;
+    font-size:15px;
+    padding:14px 16px;
+    text-align:start;
+  }
+  thead th.num-col, tbody td.num-col{ text-align:center; }
+  tbody tr{ border-bottom:1px solid var(--line); transition:background .15s; }
+  tbody tr:nth-child(even){ background: rgba(169,118,47,0.05); }
+  tbody tr:hover{ background: rgba(31,92,86,0.08); }
+  tbody td{ padding:12px 16px; font-size:15.5px; }
+  td.rank{ color:var(--brass-dark); font-weight:700; width:40px; }
+  td.name{ font-weight:600; color:var(--ink); }
+  td.total{ font-weight:700; color:var(--teal-dark); }
+
+  .bar-cell{ min-width:180px; }
+  .bar-track{
+    display:flex;
+    height:16px;
+    width:100%;
+    border-radius:4px;
+    overflow:hidden;
+    background:rgba(0,0,0,0.06);
+    border:1px solid var(--line);
+  }
+  .bar-seg{ height:100%; }
+
+  .search-box{
+    margin-bottom:16px;
+  }
+  .search-box input{
+    width:100%;
+    padding:12px 16px;
+    font-size:15px;
+    border:1px solid var(--brass);
+    border-radius:6px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:inherit;
+  }
+  .search-box input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+
+  footer{
+    text-align:center;
+    padding:28px 20px 40px;
+    color:#7a7460;
+    font-size:13px;
+    border-top:1px solid var(--line);
+  }
+
+  @media (max-width:720px){
+    header h1{ font-size:36px; }
+    .stamp{ flex-wrap:wrap; gap:16px 24px; }
+    table, thead, tbody, th, td, tr{ display:block; }
+    thead{ display:none; }
+    tbody tr{ margin-bottom:14px; border:1px solid var(--line); border-radius:8px; padding:10px 4px; }
+    tbody td{ display:flex; justify-content:space-between; padding:6px 14px; font-size:14px; }
+    tbody td::before{ content: attr(data-label); font-weight:600; color:var(--brass-dark); margin-inline-end:12px; }
+    td.rank{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-band"></div>
+
+<header>
+  <div class="kicker">پنجاب لینڈ ریکارڈ اتھارٹی — سروے ڈیش بورڈ</div>
+  <h1>تحصیل بھیرہ</h1>
+  <p class="sub">اقدام کار وار (Initiator-wise) اور موضع وار (Mauza-wise) درخواستوں کی مکمل تفصیل بمع درجہ بندی</p>
+  <div class="stamp" id="summaryStamp"></div>
+</header>
+
+<main>
+
+  <section id="initiatorSection">
+    <div class="section-head">
+      <h2>اقدام کار وار تفصیل</h2>
+      <span class="count" id="initiatorCount"></span>
+    </div>
+    <div class="legend">
+      <span class="lg-item"><span class="dot status-survey"></span>سروئیر</span>
+      <span class="lg-item"><span class="dot status-inprogress"></span>کام جاری ہے</span>
+    </div>
+    <div class="search-box">
+      <input type="text" id="initiatorSearch" placeholder="اقدام کار کا نام تلاش کریں…">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th>اقدام کار کا نام</th>
+          <th class="num-col">کل درخواستیں</th>
+          <th class="num-col">سروئیر</th>
+          <th class="num-col">کام جاری ہے</th>
+          <th class="bar-cell">تناسب</th>
+        </tr>
+      </thead>
+      <tbody id="initiatorBody"></tbody>
+    </table>
+  </section>
+
+  <section id="mauzaSection">
+    <div class="section-head">
+      <h2>موضع وار تفصیل</h2>
+      <span class="count" id="mauzaCount"></span>
+    </div>
+    <div class="legend">
+      <span class="lg-item"><span class="dot status-survey"></span>سروئیر</span>
+      <span class="lg-item"><span class="dot status-inprogress"></span>کام جاری ہے</span>
+    </div>
+    <div class="search-box">
+      <input type="text" id="mauzaSearch" placeholder="موضع کا نام تلاش کریں…">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th>موضع کا نام</th>
+          <th class="num-col">کل درخواستیں</th>
+          <th class="num-col">سروئیر</th>
+          <th class="num-col">کام جاری ہے</th>
+          <th class="bar-cell">تناسب</th>
+        </tr>
+      </thead>
+      <tbody id="mauzaBody"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  ڈیٹا ماخذ: GetAllTasks.json — صرف تحصیل بھیرہ (خدمت مرکز: بھیرہ / DMM-بھیرہ) کے ریکارڈ شامل ہیں۔
+</footer>
+
+<script src="bhera_data.js"></script>
+<script>
+const STATUS_COLORS = {
+  'سروئیر': 'status-survey',
+  'کام جاری ہے': 'status-inprogress'
+};
+
+function renderSummary(){
+  const totalRecords = BHERA_DATA.initiators.reduce((s,x)=>s+x.total,0);
+  const totalInitiators = BHERA_DATA.initiators.length;
+  const totalMauzas = BHERA_DATA.mauzas.length;
+  const stamp = document.getElementById('summaryStamp');
+  stamp.innerHTML = `
+    <div class="item"><span class="num">${totalRecords}</span><span class="lbl">کل درخواستیں</span></div>
+    <div class="item"><span class="num">${totalInitiators}</span><span class="lbl">اقدام کار</span></div>
+    <div class="item"><span class="num">${totalMauzas}</span><span class="lbl">موضع جات</span></div>
+  `;
+}
+
+function renderTable(bodyId, data, labelKey){
+  const tbody = document.getElementById(bodyId);
+  tbody.innerHTML = '';
+  data.forEach((row, i)=>{
+    const tr = document.createElement('tr');
+    const survey = row['سروئیر'] || 0;
+    const inprogress = row['کام جاری ہے'] || 0;
+    const total = row.total;
+    const surveyPct = total ? (survey/total*100) : 0;
+    const inprogressPct = total ? (inprogress/total*100) : 0;
+
+    tr.innerHTML = `
+      <td class="rank">${i+1}</td>
+      <td class="name" data-label="نام">${row.name}</td>
+      <td class="total num-col" data-label="کل">${total}</td>
+      <td class="num-col" data-label="سروئیر">${survey}</td>
+      <td class="num-col" data-label="کام جاری ہے">${inprogress}</td>
+      <td class="bar-cell" data-label="تناسب">
+        <div class="bar-track">
+          <div class="bar-seg status-survey" style="width:${surveyPct}%"></div>
+          <div class="bar-seg status-inprogress" style="width:${inprogressPct}%"></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function setupSearch(inputId, data, bodyId, countId, labelPrefix){
+  const input = document.getElementById(inputId);
+  input.addEventListener('input', ()=>{
+    const q = input.value.trim();
+    const filtered = q ? data.filter(r => r.name.includes(q)) : data;
+    renderTable(bodyId, filtered);
+    document.getElementById(countId).textContent = `${filtered.length} ${labelPrefix}`;
+  });
+}
+
+renderSummary();
+renderTable('initiatorBody', BHERA_DATA.initiators);
+renderTable('mauzaBody', BHERA_DATA.mauzas);
+document.getElementById('initiatorCount').textContent = `${BHERA_DATA.initiators.length} اقدام کار`;
+document.getElementById('mauzaCount').textContent = `${BHERA_DATA.mauzas.length} موضع جات`;
+setupSearch('initiatorSearch', BHERA_DATA.initiators, 'initiatorBody', 'initiatorCount', 'اقدام کار');
+setupSearch('mauzaSearch', BHERA_DATA.mauzas, 'mauzaBody', 'mauzaCount', 'موضع جات');
+</script>
+
+</body>
+</html>
