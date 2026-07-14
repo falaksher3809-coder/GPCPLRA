@@ -2,10 +2,13 @@
   "use strict";
 
   const CSV_PATH = "customers.csv";
+  const USERNAMES_PATH = "usernames.txt";
   const DASHBOARD_PASSWORD = "Pak@1122";
   const UNLOCK_SESSION_KEY = "call-register-dashboard-unlocked";
+  const CALLER_SESSION_KEY = "call-register-caller-name";
 
   let CUSTOMERS = [];
+  let VALID_USERNAMES = []; // lowercased, for matching
   let progress = {};
   let skipped = [];
   let currentView = "queue";
@@ -13,6 +16,7 @@
   let currentSearch = "";
   let noteDraft = "";
   let dashboardUnlocked = false;
+  let callerName = ""; // the display-form username remembered for this session
 
   // ---------- CSV parsing (handles quoted fields with commas) ----------
   function parseCsv(text) {
@@ -86,6 +90,45 @@
     return out;
   }
 
+  // ---------- Username list loading & validation ----------
+  function parseUsernames(text) {
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    return text
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
+  function isValidUsername(name) {
+    const trimmed = name.trim().toLowerCase();
+    if (!trimmed) return false;
+    return VALID_USERNAMES.includes(trimmed);
+  }
+
+  // ---------- Caller session (remember username after first successful check) ----------
+  function getCallerName() {
+    if (callerName) return callerName;
+    try {
+      const stored = sessionStorage.getItem(CALLER_SESSION_KEY);
+      if (stored) {
+        callerName = stored;
+        return callerName;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return "";
+  }
+
+  function setCallerName(name) {
+    callerName = name;
+    try {
+      sessionStorage.setItem(CALLER_SESSION_KEY, name);
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // ---------- Persistence (shared, via /api/status backed by Redis) ----------
   async function loadProgress() {
     try {
@@ -100,12 +143,12 @@
     }
   }
 
-  async function saveStatus(customerId, status, note) {
+  async function saveStatus(customerId, status, note, caller) {
     try {
       const res = await fetch("/api/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, status, note }),
+        body: JSON.stringify({ customerId, status, note, caller }),
       });
       if (!res.ok) throw new Error("Failed to save status");
       const data = await res.json();
@@ -239,17 +282,20 @@
       return;
     }
 
+    const caller = getCallerName() || "unknown";
+
     // optimistic UI update
     progress[current.id] = {
       status,
       note: noteToSave,
+      caller,
       timestamp: new Date().toISOString(),
     };
     skipped = skipped.filter((id) => id !== current.id);
     showToast(status === "connected" ? "Saving…" : "Saving…");
     renderQueueView();
 
-    const updated = await saveStatus(current.id, status, noteToSave);
+    const updated = await saveStatus(current.id, status, noteToSave, caller);
     progress = updated;
     showToast(status === "connected" ? "Marked Connected" : "Marked Not Connected");
     renderQueueView();
@@ -309,6 +355,7 @@
             <div class="list-id">#${escapeHtml(c.id)}</div>
             <div class="list-name">${escapeHtml(c.name)}</div>
             <div class="list-phone">${escapeHtml(c.phone)}</div>
+            <div class="list-caller">${escapeHtml(result?.caller || "")}</div>
             <div class="list-note">${escapeHtml(result?.note || "")}</div>
           </div>
         `;
@@ -317,13 +364,14 @@
   }
 
   function exportCsv() {
-    const header = "ID,Name,Father,CNIC,Phone,Status,Note,Timestamp\n";
+    const header = "ID,Name,Father,CNIC,Phone,Status,Caller,Note,Timestamp\n";
     const rows = CUSTOMERS.map((c) => {
       const result = progress[c.id];
       const status = result ? result.status : "pending";
+      const caller = (result?.caller || "").replace(/"/g, '""');
       const note = (result?.note || "").replace(/"/g, '""');
       const ts = result?.timestamp || "";
-      return `${c.id},"${c.name}","${c.father}",${c.cnic},${c.phone},${status},"${note}",${ts}`;
+      return `${c.id},"${c.name}","${c.father}",${c.cnic},${c.phone},${status},"${caller}","${note}",${ts}`;
     }).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -395,6 +443,21 @@
     document.getElementById("tabDashboard").addEventListener("click", () => switchView("dashboard"));
 
     document.getElementById("revealBtn").addEventListener("click", () => {
+      const existing = getCallerName();
+      if (existing) {
+        document.getElementById("revealBtn").style.display = "none";
+        document.getElementById("phoneLink").style.display = "flex";
+        return;
+      }
+
+      const entered = window.prompt("Enter your username to reveal the phone number:");
+      if (entered === null) return; // cancelled
+      const trimmed = entered.trim();
+      if (!isValidUsername(trimmed)) {
+        showToast("Invalid username");
+        return;
+      }
+      setCallerName(trimmed);
       document.getElementById("revealBtn").style.display = "none";
       document.getElementById("phoneLink").style.display = "flex";
     });
@@ -434,6 +497,17 @@
       document.getElementById("loading").innerHTML =
         '<div style="color:#b1503f;font-size:14px;max-width:280px;text-align:center;">Could not load customers.csv. Make sure it is deployed alongside index.html.</div>';
       return;
+    }
+
+    try {
+      const res = await fetch(USERNAMES_PATH);
+      if (!res.ok) throw new Error("usernames.txt not found");
+      const text = await res.text();
+      VALID_USERNAMES = parseUsernames(text).map((u) => u.toLowerCase());
+    } catch (e) {
+      console.error("Failed to load usernames.txt", e);
+      VALID_USERNAMES = [];
+      showToast("Warning: usernames.txt missing — phone reveal will fail");
     }
 
     progress = await loadProgress();
