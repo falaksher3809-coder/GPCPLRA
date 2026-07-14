@@ -59,7 +59,7 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-      const { customerId, status, note } = body || {};
+      const { customerId, status, note, caller } = body || {};
 
       if (!customerId || !status) {
         res.status(400).json({ error: "customerId and status are required" });
@@ -74,6 +74,7 @@ export default async function handler(req, res) {
       progress[customerId] = {
         status,
         note: typeof note === "string" ? note.trim() : "",
+        caller: typeof caller === "string" ? caller.trim() : "",
         timestamp: new Date().toISOString(),
       };
       await setProgress(progress);
