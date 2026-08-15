@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastral GeoJSON Viewer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#131c26;
+    --ink-2:#1c2a38;
+    --paper:#f2ede1;
+    --paper-dim:#e7dfcd;
+    --gold:#c39a3d;
+    --gold-bright:#e0b85c;
+    --line:#3a4a5c;
+    --ok:#7fae6f;
+    --warn:#c96a4b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;font-family:'Inter',sans-serif;background:var(--ink);color:var(--paper);}
+  #app{display:grid;grid-template-columns:380px 1fr;grid-template-rows:64px minmax(0,1fr);height:100vh;height:100dvh;}
+
+  header{
+    grid-column:1/3;
+    display:flex;align-items:center;gap:14px;
+    padding:0 20px;
+    background:linear-gradient(180deg,var(--ink-2),var(--ink));
+    border-bottom:1px solid var(--line);
+  }
+  header .mark{
+    width:34px;height:34px;border:1.5px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold-bright);
+    position:relative;
+  }
+  header .mark::before,header .mark::after{content:'';position:absolute;background:var(--gold);opacity:.5;}
+  header .mark::before{width:100%;height:1px;top:50%;}
+  header .mark::after{height:100%;width:1px;left:50%;}
+  header h1{
+    font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:.2px;margin:0;color:var(--paper);
+  }
+  header .sub{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8fa0b3;letter-spacing:.5px;text-transform:uppercase;
+  }
+  header .spacer{flex:1;}
+  header .stat{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8fa0b3;text-align:right;line-height:1.5;
+  }
+  header .stat b{color:var(--gold-bright);font-size:13px;}
+
+  #sidebar{
+    background:var(--paper);color:#20242a;
+    display:flex;flex-direction:column;
+    border-right:1px solid var(--line);
+    overflow:hidden;
+    min-height:0;
+  }
+  #upload-zone{
+    margin:16px;padding:22px 14px;
+    border:1.5px dashed #b8a878;
+    background:var(--paper-dim);
+    text-align:center;cursor:pointer;
+    transition:border-color .15s, background .15s;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  #upload-zone:hover, #upload-zone.drag{border-color:var(--gold);background:#e3d9bc;}
+  #upload-zone .icon{font-size:22px;display:block;margin-bottom:6px;color:#8a7440;}
+  #upload-zone .primary{font-size:13px;font-weight:600;color:#3a3220;}
+  #upload-zone .secondary{font-size:10.5px;color:#8a7c5c;margin-top:4px;}
+  #file-input{display:none;}
+
+  #summary{
+    margin:0 16px 12px 16px;padding:12px 14px;
+    background:var(--ink);color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;
+    display:none;
+  }
+  #summary.show{display:block;}
+  #summary .row{display:flex;justify-content:space-between;padding:2px 0;color:#b9c2cc;}
+  #summary .row b{color:var(--gold-bright);}
+  #summary .title{color:var(--paper);font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;border-bottom:1px solid var(--line);padding-bottom:6px;}
+
+  #search-wrap{padding:0 16px 10px 16px;display:none;}
+  #search-wrap.show{display:block;}
+  #search{
+    width:100%;padding:9px 10px;border:1px solid #cfc4a4;background:#fff;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:#20242a;
+  }
+  #search:focus{outline:2px solid var(--gold);outline-offset:-1px;}
+
+  #feature-list{flex:1;overflow-y:auto;padding:0 10px 16px 10px;}
+  .feat-item{
+    padding:10px 10px;margin-bottom:6px;
+    background:#fff;border:1px solid #e2d9bf;border-left:3px solid #cbbf9a;
+    cursor:pointer;transition:border-color .12s, transform .08s;
+  }
+  .feat-item:hover{border-left-color:var(--gold);}
+  .feat-item.active{border-left-color:var(--gold);background:#fbf3de;}
+  .feat-item .row1{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .feat-item .label{font-family:'Fraunces',serif;font-weight:600;font-size:14px;color:#2a2418;}
+  .feat-item .type{font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:#9a8c66;}
+  .feat-item .measure{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b6248;margin-top:4px;}
+  .feat-item .measure b{color:#8a6d1f;}
+  #empty-hint{padding:24px 20px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#9a8c66;line-height:1.7;}
+
+  #map-wrap{position:relative;min-height:0;min-width:0;}
+  #map{width:100%;height:100%;background:#0d141c;}
+
+  .leaflet-popup-content-wrapper{
+    background:var(--paper);color:#20242a;border-radius:2px;
+    font-family:'Inter',sans-serif;
+  }
+  .leaflet-popup-tip{background:var(--paper);}
+  .popup-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin:0 0 6px 0;color:#2a2418;border-bottom:1px solid #d8cca4;padding-bottom:5px;}
+  .popup-table{border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;}
+  .popup-table td{padding:2px 6px 2px 0;vertical-align:top;color:#4a4232;}
+  .popup-table td.k{color:#9a8c66;white-space:nowrap;}
+  .popup-table tr.measure td{color:#8a6d1f;font-weight:600;padding-top:6px;border-top:1px dashed #d8cca4;}
+
+  .glabel{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:#e0b85c;
+    text-shadow:0 0 3px #000, 0 0 3px #000, 0 0 3px #000;
+    white-space:nowrap;pointer-events:none;
+  }
+
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-track{background:var(--paper-dim);}
+  ::-webkit-scrollbar-thumb{background:#c9bd9a;}
+
+  @media (max-width: 760px){
+    #app{grid-template-columns:1fr;grid-template-rows:64px 42vh minmax(0,1fr);}
+    #sidebar{border-right:none;border-bottom:1px solid var(--line);}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="mark">GT</div>
+    <div>
+      <h1>Cadastral GeoJSON Viewer</h1>
+      <div class="sub">Killa &middot; Murabba &middot; Rakba</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="stat" id="header-stat"></div>
+  </header>
+
+  <div id="sidebar">
+    <div id="upload-zone">
+      <span class="icon">&#9633;</span>
+      <div class="primary">Drop GeoJSON file here or click to browse</div>
+      <div class="secondary">.geojson / .json &middot; parsed entirely in-browser</div>
+      <input type="file" id="file-input" accept=".geojson,.json,application/geo+json,application/json">
+    </div>
+
+    <div id="summary"></div>
+    <div id="search-wrap"><input type="text" id="search" placeholder="Filter by Killa, Murabba, or any property..."></div>
+    <div id="feature-list">
+      <div id="empty-hint">
+        No file loaded yet.<br><br>
+        Once you load a GeoJSON, every feature (Khasra/Killa parcels, Morabba boundaries, or any polygon/line/point) will be listed here with:<br><br>
+        &bull; Detected Killa / Murabba / Khasra numbers<br>
+        &bull; Area in m&sup2;, acres, and Kanal-Marla<br>
+        &bull; Perimeter / length in meters and feet<br>
+        &bull; Full attribute table on click
+      </div>
+    </div>
+  </div>
+
+  <div id="map-wrap"><div id="map"></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+<script>
+(function(){
+  const map = L.map('map', {zoomControl:true}).setView([31.35, 72.9], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:20, attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  L.control.scale({imperial:true}).addTo(map);
+
+  // Leaflet computes its size from the container at creation time. In a CSS-grid
+  // layout on mobile the container can report 0 height for a moment, which leaves
+  // tiles blank. Force a recalculation once layout settles, and keep watching
+  // for size changes (address-bar collapse, rotation, etc).
+  function fixMapSize(){ map.invalidateSize(); }
+  window.addEventListener('load', fixMapSize);
+  window.addEventListener('resize', fixMapSize);
+  window.addEventListener('orientationchange', () => setTimeout(fixMapSize, 250));
+  setTimeout(fixMapSize, 100);
+  setTimeout(fixMapSize, 500);
+  if ('ResizeObserver' in window){
+    new ResizeObserver(fixMapSize).observe(document.getElementById('map-wrap'));
+  }
+
+  let geoLayer = null;
+  let labelLayer = L.layerGroup().addTo(map);
+  let featureRegistry = []; // {layer, listEl, props, measure, label}
+
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('file-input');
+  const listEl = document.getElementById('feature-list');
+  const summaryEl = document.getElementById('summary');
+  const searchWrap = document.getElementById('search-wrap');
+  const searchInput = document.getElementById('search');
+  const headerStat = document.getElementById('header-stat');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  ['dragover','dragenter'].forEach(ev => uploadZone.addEventListener(ev, e => {
+    e.preventDefault(); uploadZone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev => uploadZone.addEventListener(ev, e => {
+    e.preventDefault(); uploadZone.classList.remove('drag');
+  }));
+  uploadZone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) readFile(f);
+  });
+
+  function readFile(file){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let data;
+      try{
+        data = JSON.parse(e.target.result);
+      }catch(err){
+        alert('Could not parse this file as JSON/GeoJSON:\n' + err.message);
+        return;
+      }
+      loadGeoJSON(data, file.name);
+    };
+    reader.onerror = () => alert('Failed to read file.');
+    reader.readAsText(file);
+  }
+
+  // Field name candidates for cadastral identifiers (case-insensitive, partial match)
+  const KILLA_KEYS = ['killa','kila','khasra','khasra_no','killano','killa_no'];
+  const MORABBA_KEYS = ['murabba','moraba','morabba','murrabba','block'];
+  const AREA_KEYS = ['rakba','area','shajra_area'];
+
+  function findProp(props, candidates){
+    if (!props) return null;
+    const keys = Object.keys(props);
+    for (const cand of candidates){
+      const hit = keys.find(k => k.toLowerCase().replace(/[\s_]/g,'') === cand.replace(/[\s_]/g,''));
+      if (hit && props[hit] !== null && props[hit] !== '') return props[hit];
+    }
+    for (const cand of candidates){
+      const hit = keys.find(k => k.toLowerCase().includes(cand.replace(/_/g,'')));
+      if (hit && props[hit] !== null && props[hit] !== '') return props[hit];
+    }
+    return null;
+  }
+
+  function sqmToUnits(sqm){
+    const sqft = sqm * 10.7639;
+    const sqyd = sqm * 1.19599;
+    const acres = sqm / 4046.856;
+    const marlaTotal = sqft / 225;         // 1 Marla = 225 sq ft (Punjab standard)
+    const kanal = Math.floor(marlaTotal / 20);
+    const marla = marlaTotal - kanal*20;
+    return {sqm, sqft, sqyd, acres, kanal, marla};
+  }
+
+  function metersToFeet(m){ return m * 3.28084; }
+
+  function computeMeasure(feature){
+    const type = feature.geometry && feature.geometry.type;
+    if (!type) return null;
+    try{
+      if (type === 'Polygon' || type === 'MultiPolygon'){
+        const areaSqm = turf.area(feature);
+        const perimM = turf.length(turf.polygonToLine ? turf.polygonToLine(feature) : feature, {units:'meters'});
+        const units = sqmToUnits(areaSqm);
+        return {kind:'area', ...units, perimM, perimFt: metersToFeet(perimM)};
+      } else if (type === 'LineString' || type === 'MultiLineString'){
+        const lenM = turf.length(feature, {units:'kilometers'}) * 1000;
+        return {kind:'length', lenM, lenFt: metersToFeet(lenM)};
+      } else if (type === 'Point' || type === 'MultiPoint'){
+        return {kind:'point'};
+      }
+    }catch(err){
+      return null;
+    }
+    return null;
+  }
+
+  function fmt(n, d=2){
+    if (n === undefined || n === null || isNaN(n)) return '\u2014';
+    return Number(n).toLocaleString(undefined, {maximumFractionDigits:d, minimumFractionDigits:0});
+  }
+
+  function measureHtml(m){
+    if (!m) return '';
+    if (m.kind === 'area'){
+      return `Area: <b>${fmt(m.sqm,1)} m&sup2;</b> &middot; ${fmt(m.acres,3)} ac &middot; <b>${m.kanal}K-${fmt(m.marla,2)}M</b><br>Perimeter: ${fmt(m.perimM,1)} m (${fmt(m.perimFt,0)} ft)`;
+    }
+    if (m.kind === 'length'){
+      return `Length: <b>${fmt(m.lenM,1)} m</b> (${fmt(m.lenFt,0)} ft)`;
+    }
+    if (m.kind === 'point') return 'Point feature';
+    return '';
+  }
+
+  function popupHtml(props, label, m){
+    let rows = '';
+    if (props){
+      for (const [k,v] of Object.entries(props)){
+        if (v === null || v === undefined || v === '') continue;
+        rows += `<tr><td class="k">${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td></tr>`;
+      }
+    }
+    let measureRow = '';
+    if (m && m.kind === 'area'){
+      measureRow = `<tr class="measure"><td class="k">Area</td><td>${fmt(m.sqm,1)} m&sup2; / ${fmt(m.acres,3)} ac / ${m.kanal}K-${fmt(m.marla,2)}M</td></tr>
+                    <tr class="measure"><td class="k">Perimeter</td><td>${fmt(m.perimM,1)} m / ${fmt(m.perimFt,0)} ft</td></tr>`;
+    } else if (m && m.kind === 'length'){
+      measureRow = `<tr class="measure"><td class="k">Length</td><td>${fmt(m.lenM,1)} m / ${fmt(m.lenFt,0)} ft</td></tr>`;
+    }
+    return `<div class="popup-title">${escapeHtml(label)}</div><table class="popup-table">${rows}${measureRow}</table>`;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function labelFor(props, idx){
+    const killa = findProp(props, KILLA_KEYS);
+    const morabba = findProp(props, MORABBA_KEYS);
+    if (killa && morabba) return `Murabba ${morabba} / Killa ${killa}`;
+    if (killa) return `Killa ${killa}`;
+    if (morabba) return `Murabba ${morabba}`;
+    const name = props && (props.name || props.Name || props.NAME || props.label || props.title);
+    if (name) return String(name);
+    return `Feature ${idx+1}`;
+  }
+
+  function clearAll(){
+    if (geoLayer) { map.removeLayer(geoLayer); geoLayer = null; }
+    labelLayer.clearLayers();
+    featureRegistry = [];
+    listEl.innerHTML = '';
+  }
+
+  function loadGeoJSON(data, filename){
+    clearAll();
+
+    let fc = data;
+    if (data.type === 'Feature') fc = {type:'FeatureCollection', features:[data]};
+    if (data.type && data.type !== 'FeatureCollection' && data.type !== 'Feature') {
+      // bare geometry
+      fc = {type:'FeatureCollection', features:[{type:'Feature', properties:{}, geometry:data}]};
+    }
+    if (!fc.features || !Array.isArray(fc.features)){
+      alert('This file does not look like a valid GeoJSON FeatureCollection.');
+      return;
+    }
+
+    let totalAreaSqm = 0, totalPerimM = 0, totalLenM = 0;
+    let polyCount=0, lineCount=0, ptCount=0;
+
+    geoLayer = L.geoJSON(fc, {
+      style: feature => ({
+        color:'#e0b85c', weight:2, opacity:0.9,
+        fillColor:'#c39a3d', fillOpacity:0.12
+      }),
+      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+        radius:6, color:'#e0b85c', weight:2, fillColor:'#1c2a38', fillOpacity:1
+      }),
+      onEachFeature: (feature, layer) => {
+        const idx = featureRegistry.length;
+        const props = feature.properties || {};
+        const label = labelFor(props, idx);
+        const m = computeMeasure(feature);
+
+        if (m && m.kind === 'area'){ totalAreaSqm += m.sqm; totalPerimM += m.perimM; polyCount++; }
+        if (m && m.kind === 'length'){ totalLenM += m.lenM; lineCount++; }
+        if (m && m.kind === 'point'){ ptCount++; }
+
+        layer.bindPopup(popupHtml(props, label, m), {maxWidth:320});
+
+        // centroid label for polygons/lines
+        try{
+          const centroid = turf.centroid(feature);
+          const [lng, lat] = centroid.geometry.coordinates;
+          const killa = findProp(props, KILLA_KEYS);
+          const morabba = findProp(props, MORABBA_KEYS);
+          const tag = killa || morabba ? (killa || '') + (killa && morabba ? '/' : '') + (morabba || '') : '';
+          if (tag){
+            L.marker([lat,lng], {
+              icon: L.divIcon({className:'glabel', html: tag, iconSize:[60,14]}),
+              interactive:false
+            }).addTo(labelLayer);
+          }
+        }catch(e){}
+
+        const li = document.createElement('div');
+        li.className = 'feat-item';
+        li.innerHTML = `<div class="row1"><span class="label">${escapeHtml(label)}</span><span class="type">${feature.geometry ? feature.geometry.type : ''}</span></div>
+                         <div class="measure">${measureHtml(m)}</div>`;
+        li.addEventListener('click', () => {
+          featureRegistry.forEach(f => f.listEl.classList.remove('active'));
+          li.classList.add('active');
+          try{
+            if (layer.getBounds) map.fitBounds(layer.getBounds(), {maxZoom:17, padding:[40,40]});
+            else if (layer.getLatLng) map.setView(layer.getLatLng(), 18);
+          }catch(e){}
+          layer.openPopup();
+        });
+        listEl.appendChild(li);
+
+        featureRegistry.push({layer, listEl: li, props, measure:m, label});
+      }
+    }).addTo(map);
+
+    fixMapSize();
+    try{
+      map.fitBounds(geoLayer.getBounds(), {padding:[30,30]});
+    }catch(e){}
+
+    // summary panel
+    const totalUnits = sqmToUnits(totalAreaSqm);
+    summaryEl.classList.add('show');
+    summaryEl.innerHTML = `
+      <div class="title">${escapeHtml(filename)}</div>
+      <div class="row"><span>Features</span><b>${fc.features.length}</b></div>
+      <div class="row"><span>Polygons</span><b>${polyCount}</b></div>
+      <div class="row"><span>Lines</span><b>${lineCount}</b></div>
+      <div class="row"><span>Points</span><b>${ptCount}</b></div>
+      ${polyCount ? `<div class="row"><span>Total area</span><b>${fmt(totalUnits.sqm,0)} m&sup2;</b></div>
+      <div class="row"><span></span><b>${totalUnits.kanal}K-${fmt(totalUnits.marla,2)}M / ${fmt(totalUnits.acres,3)} ac</b></div>
+      <div class="row"><span>Total perimeter</span><b>${fmt(totalPerimM,0)} m</b></div>` : ''}
+      ${lineCount ? `<div class="row"><span>Total length</span><b>${fmt(totalLenM,0)} m</b></div>` : ''}
+    `;
+
+    searchWrap.classList.add('show');
+    headerStat.innerHTML = `<b>${fc.features.length}</b> features loaded`;
+
+    if (fc.features.length === 0){
+      listEl.innerHTML = '<div id="empty-hint">This file loaded but contains no features.</div>';
+    }
+  }
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    featureRegistry.forEach(f => {
+      let hay = f.label.toLowerCase();
+      for (const v of Object.values(f.props || {})) hay += ' ' + String(v).toLowerCase();
+      f.listEl.style.display = hay.includes(q) ? '' : 'none';
+    });
+  });
+})();
+</script>
+</body>
+</html>
