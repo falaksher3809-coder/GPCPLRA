@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>e-Stamp Retrieval Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#f5f7fa; --card:#fff; --border:#e0e0e0; --primary:#0d6efd; --text:#212529; --muted:#6c757d; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { background:#198754; color:#fff; padding: 18px 24px; font-weight: 600; font-size: 20px; }
+  .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+  .card { background: var(--card); border:1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .row { display:flex; gap:10px; flex-wrap: wrap; align-items: center; }
+  input[type=text] { flex:1; min-width: 220px; padding: 10px 12px; border:1px solid var(--border); border-radius: 6px; font-size: 15px; }
+  button { padding: 10px 18px; border:0; border-radius: 6px; background: var(--primary); color:#fff; font-size:15px; cursor:pointer; }
+  button:hover { background:#0b5ed7; }
+  button:disabled { background:#adb5bd; cursor:not-allowed; }
+  button.ghost { background:transparent; color: var(--primary); border:1px solid var(--primary); }
+  button.ghost:hover { background:#eaf2ff; }
+  table { width:100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align:left; padding: 8px 10px; border-bottom:1px solid var(--border); vertical-align: top; }
+  th { background:#f8f9fa; font-weight:600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .error { color:#dc3545; font-size:14px; }
+  .loading { color: var(--primary); font-size:14px; }
+  .kv { display:grid; grid-template-columns: 220px 1fr; gap: 6px 16px; font-size: 14px; }
+  .kv .k { color: var(--muted); }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#e7f5ec; color:#198754; font-size: 12px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>Government of the Punjab — e-Stamp Retrieval (Unofficial Client)</header>
+
+<div class="container">
+
+  <!-- ============ Search by CNIC ============ -->
+  <div class="card">
+    <h2>Search Stamps by CNIC</h2>
+    <div class="row">
+      <input id="cnicInput" type="text" placeholder="Enter 13-digit CNIC (e.g. 3450169307767)" maxlength="17">
+      <button id="searchBtn" onclick="searchByCnic()">Search Stamps</button>
+      <button class="ghost" onclick="clearAll()">Clear</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">Dashes are ignored — the API expects 13 digits only.</div>
+    <div id="searchMsg" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- ============ Stamp list ============ -->
+  <div class="card" id="listCard" style="display:none;">
+    <h2>Stamp Records</h2>
+    <div id="listBody"></div>
+  </div>
+
+  <!-- ============ Stamp details ============ -->
+  <div class="card" id="detailCard" style="display:none;">
+    <div class="row" style="justify-content: space-between;">
+      <h2 id="detailTitle">Stamp Details</h2>
+      <button class="ghost" onclick="closeDetails()">Close</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "https://es.punjab-zameen.gov.pk/eStampCitizenPortal/api/Proxy";
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+function $(id){ return document.getElementById(id); }
+
+function esc(s){
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+
+function fmtMoney(n){
+  if (n === null || n === undefined || isNaN(n)) return "";
+  return Number(n).toLocaleString("en-PK");
+}
+
+function clearAll(){
+  $("cnicInput").value = "";
+  $("searchMsg").innerHTML = "";
+  $("listCard").style.display = "none";
+  $("detailCard").style.display = "none";
+}
+
+/* ------------------------------------------------------------------ */
+/*  1. Get all stamps for a CNIC                                      */
+/* ------------------------------------------------------------------ */
+async function searchByCnic(){
+  const cnic = $("cnicInput").value.replace(/\D/g, "");
+  if (cnic.length !== 13){
+    $("searchMsg").innerHTML = '<span class="error">Please enter a valid 13-digit CNIC.</span>';
+    return;
+  }
+
+  $("searchMsg").innerHTML = '<span class="loading">Searching records…</span>';
+  $("listCard").style.display = "none";
+  $("detailCard").style.display = "none";
+
+  try {
+    const url = `${BASE}/Reporting/GetStampRetrievalwithCNIC?PersonCNIC=${encodeURIComponent(cnic)}`;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderStampList(data);
+    $("searchMsg").innerHTML = "";
+  } catch (err){
+    $("searchMsg").innerHTML =
+      `<span class="error">Error: ${esc(err.message)}. ` +
+      `If this is a CORS issue, open DevTools → Network to confirm, or run this page from the same origin.</span>`;
+  }
+}
+
+function renderStampList(stamps){
+  const card = $("listCard");
+  const body = $("listBody");
+
+  if (!Array.isArray(stamps) || stamps.length === 0){
+    body.innerHTML = '<div class="muted">No stamps found for this CNIC.</div>';
+    card.style.display = "block";
+    return;
+  }
+
+  let html = `<div class="muted" style="margin-bottom:8px;">${stamps.length} record(s) found.</div>`;
+  html += `<table><thead><tr>
+    <th>Stamp #</th><th>Challan #</th><th>Deed</th><th>Amount (Rs.)</th>
+    <th>Payment Date</th><th>Status</th><th></th>
+  </tr></thead><tbody>`;
+
+  for (const s of stamps){
+    html += `<tr>
+      <td><code>${esc(s.STAMP_NUMBER)}</code></td>
+      <td>${esc(s.CHALLAN_NUMBER)}</td>
+      <td>${esc(s.DEED)}</td>
+      <td>${fmtMoney(s.AMOUNT_PAID)}</td>
+      <td>${esc(s.PAYMENT_DATE)}</td>
+      <td><span class="pill">${esc(s.STAMP_STATUS)}</span></td>
+      <td><button class="ghost" onclick="loadStampDetails('${esc(s.STAMP_NUMBER)}')">Details</button></td>
+    </tr>`;
+  }
+
+  html += "</tbody></table>";
+  body.innerHTML = html;
+  card.style.display = "block";
+}
+
+/* ------------------------------------------------------------------ */
+/*  2. Get full details for a single stamp                            */
+/* ------------------------------------------------------------------ */
+async function loadStampDetails(stampNumber){
+  const card = $("detailCard");
+  const body = $("detailBody");
+
+  card.style.display = "block";
+  $("detailTitle").textContent = `Stamp ${stampNumber}`;
+  body.innerHTML = '<div class="loading">Loading details…</div>';
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  try {
+    const url = `${BASE}/ChallanForm/SearchStamp?StampNumber=${encodeURIComponent(stampNumber)}`;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderStampDetails(data);
+  } catch (err){
+    body.innerHTML = `<div class="error">Error: ${esc(err.message)}</div>`;
+  }
+}
+
+function closeDetails(){
+  $("detailCard").style.display = "none";
+}
+
+function kv(k, v){
+  return `<div class="k">${esc(k)}</div><div>${v === "" || v === null || v === undefined ? "—" : v}</div>`;
+}
+
+function renderStampDetails(d){
+  if (!d || typeof d !== "object"){
+    $("detailBody").innerHTML = '<div class="error">Unexpected response.</div>';
+    return;
+  }
+
+  const stamp   = d.stampModel || {};
+  const prop    = d.propertyInfo || {};
+  const pay     = d.paymentInfo || {};
+  const party1  = (d.Party1 || [])[0] || {};
+  const party2  = (d.Party2 || [])[0] || {};
+  const duties  = (stamp.lstStampChallanDuties || []);
+
+  let html = "";
+
+  /* --- Summary --- */
+  html += `<h3>Summary</h3><div class="kv">
+    ${kv("Stamp Number", `<code>${esc(stamp.StampNumber)}</code>`)}
+    ${kv("Printed Label", `<code>${esc(stamp.StampNumberPrinted)}</code>`)}
+    ${kv("Challan Number", esc(d.ChallanNumber))}
+    ${kv("Deed", esc(d.TransactionNameString))}
+    ${kv("Transaction Type", esc(d.TransactionTypeString))}
+    ${kv("Status", `<span class="pill">${esc(stamp.StatusString)}</span>`)}
+    ${kv("Issue Date", esc(stamp.IssueDate))}
+    ${kv("District", esc(d.DistrictString))}
+    ${kv("Tehsil", esc(d.TehsilString))}
+    ${kv("Total Property Value", fmtMoney(d.TotalAmount))}
+    ${kv("Stamp Duty", fmtMoney(stamp.ConsolidatedStampAmount))}
+    ${kv("Total Paid", fmtMoney(pay.PaymentCollected))}
+  </div>`;
+
+  /* --- Payment --- */
+  html += `<h3>Payment</h3><div class="kv">
+    ${kv("Bank", esc(pay.BankName))}
+    ${kv("Branch", esc(pay.BranchName))}
+    ${kv("Branch District", esc(pay.BranchDistrictName))}
+    ${kv("Payment Reference", esc(pay.PaymentReference))}
+    ${kv("Payment Time", esc(pay.PayementTimeStampForDisplay))}
+  </div>`;
+
+  /* --- Property --- */
+  html += `<h3>Property</h3><div class="kv">
+    ${kv("Address", esc(prop.FullAddress))}
+    ${kv("District", esc(prop.DistrictString))}
+    ${kv("Tehsil", esc(prop.TehsilString))}
+    ${kv("Qanoongoee", esc(prop.QanoongoeeString))}
+    ${kv("Mouza", esc(prop.MouzaString))}
+    ${kv("Khasra No", esc(prop.KhasraNo))}
+    ${kv("Area", `${esc(prop.Area)} ${esc(prop.AreaUnit)}`)}
+    ${kv("Land Classification", esc(prop.LandClassificationString))}
+    ${kv("Location", esc(prop.LocationString))}
+    ${kv("Valuation", fmtMoney(prop.ValuationAmount))}
+    ${kv("Declared Amount", fmtMoney(prop.DeclaredAmount))}
+  </div>`;
+
+  /* --- Parties --- */
+  html += `<h3>Parties</h3><div class="kv">
+    ${kv("Seller (Party1)", `${esc(party1.PersonName)} — CNIC ${esc(party1.PersonCnic)}`)}
+    ${kv("Purchaser (Party2)", `${esc(party2.PersonName)} — CNIC ${esc(party2.PersonCnic)}`)}
+    ${kv("Agent", d.AgentName ? `${esc(d.AgentName)} — CNIC ${esc(d.AgentCnic)}` : "—")}
+    ${kv("Amount Paid By", esc(d.ChallanAmountPaidByString))}
+  </div>`;
+
+  /* --- Duties breakdown --- */
+  if (duties.length){
+    html += `<h3>Duties Breakdown</h3><table>
+      <thead><tr><th>#</th><th>Duty</th><th>Amount (Rs.)</th></tr></thead><tbody>`;
+    for (const d2 of duties){
+      html += `<tr>
+        <td>${esc(d2.sequence)}</td>
+        <td>${esc(d2.dutyLabelName)}</td>
+        <td>${fmtMoney(d2.dutyAmount)}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+
+  /* --- Raw JSON toggle --- */
+  html += `
+    <h3>Raw JSON</h3>
+    <button class="ghost" onclick="toggleRaw()" id="rawBtn">Show Raw</button>
+    <pre id="rawJson" style="display:none; background:#f8f9fa; padding:12px; border-radius:6px; overflow:auto; max-height:420px; font-size:12px;">${esc(JSON.stringify(d, null, 2))}</pre>
+  `;
+
+  $("detailBody").innerHTML = html;
+}
+
+function toggleRaw(){
+  const el = $("rawJson");
+  const btn = $("rawBtn");
+  if (el.style.display === "none"){
+    el.style.display = "block";
+    btn.textContent = "Hide Raw";
+  } else {
+    el.style.display = "none";
+    btn.textContent = "Show Raw";
+  }
+}
+</script>
+</body>
+</html>
