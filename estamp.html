@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Stamp Lookup — Punjab Citizen Portal</title>
+<style>
+  :root{
+    --ink:#1a2f28;
+    --paper:#f6f4ee;
+    --line:#c9c2ae;
+    --stamp-red:#8a2e2e;
+    --stamp-red-dark:#6e2323;
+    --seal-green:#2f5d4f;
+    --muted:#6b6455;
+    --ok:#2f5d4f;
+    --warn:#8a2e2e;
+    font-family: "Iowan Old Style","Palatino Linotype", Georgia, "Noto Nastaliq Urdu", serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,0.045) 1px, transparent 0);
+    background-size: 14px 14px;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:32px 20px 80px;}
+
+  header{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:24px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  header h1{
+    font-size:1.5rem;
+    margin:0;
+    letter-spacing:0.01em;
+    font-weight:600;
+  }
+  header .sub{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:0.72rem;
+    color:var(--muted);
+    text-align:right;
+    line-height:1.5;
+  }
+
+  .notice{
+    border:1px solid var(--stamp-red);
+    background:repeating-linear-gradient(135deg, rgba(138,46,46,0.06) 0 10px, rgba(138,46,46,0.11) 10px 20px);
+    color:var(--stamp-red-dark);
+    padding:14px 16px;
+    font-size:0.92rem;
+    line-height:1.5;
+    margin-bottom:28px;
+  }
+  .notice strong{display:block;margin-bottom:4px;font-size:0.95rem;}
+
+  form.query{
+    display:flex;
+    gap:10px;
+    margin-bottom:8px;
+    flex-wrap:wrap;
+  }
+  label.field{
+    flex:1 1 260px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  label.field span{
+    font-size:0.78rem;
+    color:var(--muted);
+  }
+  input[type=text]{
+    font:inherit;
+    font-size:1.05rem;
+    padding:10px 12px;
+    border:1.5px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    letter-spacing:0.03em;
+  }
+  input[type=text]:focus{
+    outline:2px solid var(--seal-green);
+    outline-offset:1px;
+  }
+  button{
+    font:inherit;
+    font-size:0.95rem;
+    padding:10px 20px;
+    background:var(--ink);
+    color:var(--paper);
+    border:1.5px solid var(--ink);
+    cursor:pointer;
+    align-self:flex-end;
+  }
+  button:hover{background:var(--seal-green);border-color:var(--seal-green);}
+  button:disabled{opacity:0.5;cursor:wait;}
+  button.ghost{
+    background:transparent;
+    color:var(--ink);
+  }
+  button.ghost:hover{background:var(--ink);color:var(--paper);}
+
+  .hint{font-size:0.78rem;color:var(--muted);margin:6px 0 24px;}
+
+  .status{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:0.82rem;
+    padding:10px 12px;
+    border-left:3px solid var(--muted);
+    margin:16px 0;
+    white-space:pre-wrap;
+    background:rgba(0,0,0,0.03);
+  }
+  .status.error{border-color:var(--stamp-red);color:var(--stamp-red-dark);background:rgba(138,46,46,0.06);}
+  .status.ok{border-color:var(--seal-green);}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:12px;
+    font-size:0.9rem;
+  }
+  thead th{
+    text-align:left;
+    font-weight:600;
+    font-size:0.75rem;
+    color:var(--muted);
+    border-bottom:1.5px solid var(--ink);
+    padding:6px 10px 8px;
+  }
+  tbody td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr{cursor:pointer;}
+  tbody tr:hover{background:rgba(47,93,79,0.08);}
+  .pill{
+    display:inline-block;
+    padding:2px 8px;
+    font-size:0.72rem;
+    border:1px solid currentColor;
+  }
+  .pill.used{color:var(--seal-green);}
+  .pill.unused,.pill.active{color:var(--stamp-red-dark);}
+  .mono{font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:0.85rem;}
+
+  section.results, section.detail{margin-top:32px;}
+  h2.section-title{
+    font-size:0.95rem;
+    text-transform:none;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .detail-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 32px;
+  }
+  @media (max-width:640px){ .detail-grid{grid-template-columns:1fr;} }
+
+  .detail-block{margin-bottom:20px;}
+  .detail-block h3{
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--muted);
+    margin:0 0 8px;
+    font-weight:600;
+  }
+  dl.kv{margin:0;}
+  dl.kv .row{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:5px 0;
+    border-bottom:1px dotted var(--line);
+    font-size:0.88rem;
+  }
+  dl.kv .row dt{color:var(--muted);}
+  dl.kv .row dd{margin:0;text-align:right;max-width:60%;word-break:break-word;}
+
+  details.raw{margin-top:16px;}
+  details.raw summary{
+    cursor:pointer;
+    font-size:0.82rem;
+    color:var(--muted);
+  }
+  pre.raw-body{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:0.78rem;
+    background:#fff;
+    border:1px solid var(--line);
+    padding:12px;
+    overflow:auto;
+    max-height:400px;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  .back-link{
+    font-size:0.85rem;
+    background:none;
+    border:none;
+    color:var(--seal-green);
+    text-decoration:underline;
+    padding:0;
+    cursor:pointer;
+  }
+
+  footer{
+    margin-top:60px;
+    border-top:1px solid var(--line);
+    padding-top:16px;
+    font-size:0.75rem;
+    color:var(--muted);
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>e-Stamp Lookup</h1>
+    <div class="sub">Punjab Citizen Portal — unauthenticated proxy endpoints<br>client-side only, no server, no storage</div>
+  </header>
+
+  <div class="notice">
+    <strong>Before you query anyone:</strong>
+    These endpoints return real personal and financial data for any CNIC you supply — there is no login or authorization check on the API itself. Only look up CNICs you are actually authorised to check (your own, or as part of your official duties). Nothing here should be used to look up people out of curiosity.
+  </div>
+
+  <form class="query" id="cnicForm">
+    <label class="field">
+      <span>CNIC (13 digits, no dashes)</span>
+      <input type="text" id="cnicInput" inputmode="numeric" placeholder="3450169307767" maxlength="13" autocomplete="off">
+    </label>
+    <button type="submit" id="searchBtn">Find stamps</button>
+  </form>
+  <div class="hint">Dashes are stripped automatically. History of your last few searches is kept only in this tab's memory — nothing is saved to disk.</div>
+
+  <div id="listStatus"></div>
+
+  <section class="results" id="resultsSection" style="display:none">
+    <h2 class="section-title">
+      <span id="resultsTitle">Stamps</span>
+      <button class="ghost" id="exportCsvBtn" type="button" style="display:none">Export CSV</button>
+    </h2>
+    <div id="resultsTableWrap"></div>
+  </section>
+
+  <section class="detail" id="detailSection" style="display:none">
+    <h2 class="section-title">
+      <span>Stamp detail</span>
+      <button class="back-link" id="backBtn" type="button">&larr; back to list</button>
+    </h2>
+    <div id="detailStatus"></div>
+    <div id="detailBody"></div>
+  </section>
+
+  <footer>
+    Requests go directly from your browser to
+    <span class="mono">es.punjab-zameen.gov.pk</span>. If the browser blocks the request
+    (look for a CORS error in the console — "No 'Access-Control-Allow-Origin' header"),
+    the portal's server isn't allowing cross-origin calls from this page's origin.
+    That's a server-side policy, not something fixable from this page; options are running
+    it from a matching origin, a browser extension that disables CORS for testing, or a
+    local proxy you control. Full request/response detail is always logged to the console.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const BASE = 'https://es.punjab-zameen.gov.pk/eStampCitizenPortal/api/Proxy';
+  const LIST_URL = BASE + '/Reporting/GetStampRetrievalwithCNIC';
+  const DETAIL_URL = BASE + '/ChallanForm/SearchStamp';
+
+  const $ = (id) => document.getElementById(id);
+  const form = $('cnicForm');
+  const cnicInput = $('cnicInput');
+  const searchBtn = $('searchBtn');
+  const listStatus = $('listStatus');
+  const resultsSection = $('resultsSection');
+  const resultsTitle = $('resultsTitle');
+  const resultsTableWrap = $('resultsTableWrap');
+  const exportCsvBtn = $('exportCsvBtn');
+  const detailSection = $('detailSection');
+  const detailStatus = $('detailStatus');
+  const detailBody = $('detailBody');
+  const backBtn = $('backBtn');
+
+  let currentStamps = [];
+
+  function setStatus(el, msg, kind){
+    el.className = 'status' + (kind ? ' ' + kind : '');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+  function clearStatus(el){ el.style.display = 'none'; el.textContent=''; }
+
+  async function callApi(url, method, params){
+    const qs = new URLSearchParams(params).toString();
+    const fullUrl = url + (qs ? '?' + qs : '');
+    console.log('[eStamp]', method, fullUrl);
+    let resp;
+    try {
+      resp = await fetch(fullUrl, {
+        method: method,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+    } catch (networkErr) {
+      console.error('[eStamp] network/CORS error', networkErr);
+      throw new Error(
+        'Request failed before reaching the server — most likely CORS. ' +
+        'Check the browser console for the exact error. (' + networkErr.message + ')'
+      );
+    }
+
+    const rawText = await resp.text();
+    console.log('[eStamp] response status', resp.status, resp.statusText);
+    console.log('[eStamp] raw response body:', rawText);
+
+    if (!resp.ok) {
+      throw new Error('HTTP ' + resp.status + ' ' + resp.statusText + ' — see console for raw body');
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      throw { notJson: true, rawText };
+    }
+    return data;
+  }
+
+  function normalizeCnic(v){
+    return v.replace(/[^0-9]/g, '');
+  }
+
+  function fmtMoney(v){
+    if (v === null || v === undefined || v === '') return '—';
+    const n = Number(v);
+    if (isNaN(n)) return String(v);
+    return n.toLocaleString('en-PK', {maximumFractionDigits: 2});
+  }
+
+  function statusPillClass(status){
+    if (!status) return '';
+    const s = String(status).toLowerCase();
+    if (s.includes('used')) return 'used';
+    if (s.includes('unused') || s.includes('active') || s.includes('issued')) return 'unused';
+    return '';
+  }
+
+  function renderList(stamps){
+    currentStamps = Array.isArray(stamps) ? stamps : [];
+    resultsTitle.textContent = 'Stamps (' + currentStamps.length + ')';
+
+    if (currentStamps.length === 0) {
+      resultsTableWrap.innerHTML = '<p class="hint">No stamps found for this CNIC.</p>';
+      exportCsvBtn.style.display = 'none';
+      resultsSection.style.display = 'block';
+      return;
+    }
+
+    exportCsvBtn.style.display = 'inline-block';
+
+    const rows = currentStamps.map((s, i) => {
+      const status = s.STAMP_STATUS || s.StampStatus || '';
+      return '<tr data-idx="' + i + '">' +
+        '<td class="mono">' + escapeHtml(s.STAMP_NUMBER || s.StampNumber || '—') + '</td>' +
+        '<td>' + escapeHtml(s.DEED || s.Deed || '—') + '</td>' +
+        '<td>' + escapeHtml(s.ISSUED_BY || s.IssuedBy || '—') + '</td>' +
+        '<td>' + escapeHtml(s.PAYMENT_DATE || s.PaymentDate || '—') + '</td>' +
+        '<td>' + fmtMoney(s.AMOUNT_PAID || s.AmountPaid) + '</td>' +
+        '<td><span class="pill ' + statusPillClass(status) + '">' + escapeHtml(status || '—') + '</span></td>' +
+        '</tr>';
+    }).join('');
+
+    resultsTableWrap.innerHTML =
+      '<table><thead><tr>' +
+      '<th>Stamp number</th><th>Deed</th><th>Issued by</th><th>Payment date</th><th>Amount paid</th><th>Status</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+    resultsTableWrap.querySelectorAll('tbody tr').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const idx = Number(tr.getAttribute('data-idx'));
+        const stamp = currentStamps[idx];
+        const stampNumber = stamp.STAMP_NUMBER || stamp.StampNumber;
+        if (stampNumber) loadDetail(stampNumber);
+      });
+    });
+
+    resultsSection.style.display = 'block';
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function toCsv(stamps){
+    const cols = ['STAMP_NUMBER','CHALLAN_NUMBER','DEED','ISSUED_BY','PAYMENT_DATE','AMOUNT_PAID','STAMP_STATUS'];
+    const lines = [cols.join(',')];
+    stamps.forEach(s => {
+      const row = cols.map(c => {
+        const v = s[c] !== undefined ? s[c] : '';
+        const str = String(v).replace(/"/g, '""');
+        return /[,"\n]/.test(str) ? '"' + str + '"' : str;
+      });
+      lines.push(row.join(','));
+    });
+    return lines.join('\n');
+  }
+
+  exportCsvBtn.addEventListener('click', () => {
+    const csv = toCsv(currentStamps);
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'estamp-list.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  function kvRows(pairs){
+    return pairs
+      .filter(([,v]) => v !== undefined)
+      .map(([k,v]) => '<div class="row"><dt>' + escapeHtml(k) + '</dt><dd>' + escapeHtml(v === null || v === '' ? '—' : v) + '</dd></div>')
+      .join('');
+  }
+
+  function renderDetail(data){
+    const stampModel = data.stampModel || data.StampModel || {};
+    const propertyInfo = data.propertyInfo || data.PropertyInfo || {};
+    const paymentInfo = data.paymentInfo || data.PaymentInfo || {};
+    const party1 = data.Party1 || data.party1 || {};
+    const party2 = data.Party2 || data.party2 || {};
+    const duties = data.lstStampChallanDuties || data.LstStampChallanDuties || [];
+
+    let html = '<div class="detail-grid">';
+
+    html += '<div class="detail-block"><h3>Stamp</h3><dl class="kv">' + kvRows(Object.entries(stampModel)) + '</dl></div>';
+    html += '<div class="detail-block"><h3>Payment</h3><dl class="kv">' + kvRows(Object.entries(paymentInfo)) + '</dl></div>';
+    html += '<div class="detail-block"><h3>Property</h3><dl class="kv">' + kvRows(Object.entries(propertyInfo)) + '</dl></div>';
+
+    if (Object.keys(party1).length) {
+      html += '<div class="detail-block"><h3>Party 1</h3><dl class="kv">' + kvRows(Object.entries(party1)) + '</dl></div>';
+    }
+    if (Object.keys(party2).length) {
+      html += '<div class="detail-block"><h3>Party 2</h3><dl class="kv">' + kvRows(Object.entries(party2)) + '</dl></div>';
+    }
+    html += '</div>';
+
+    if (Array.isArray(duties) && duties.length) {
+      const dutyCols = Object.keys(duties[0]);
+      html += '<div class="detail-block"><h3>Challan duties</h3><table><thead><tr>' +
+        dutyCols.map(c => '<th>' + escapeHtml(c) + '</th>').join('') +
+        '</tr></thead><tbody>' +
+        duties.map(d => '<tr>' + dutyCols.map(c => '<td>' + escapeHtml(d[c] === null || d[c] === undefined ? '—' : d[c]) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table></div>';
+    }
+
+    html += '<details class="raw"><summary>Raw response JSON</summary><pre class="raw-body">' +
+      escapeHtml(JSON.stringify(data, null, 2)) + '</pre></details>';
+
+    detailBody.innerHTML = html;
+  }
+
+  async function loadDetail(stampNumber){
+    clearStatus(detailStatus);
+    detailBody.innerHTML = '';
+    detailSection.style.display = 'block';
+    detailSection.scrollIntoView({behavior:'smooth', block:'start'});
+    setStatus(detailStatus, 'Loading details for ' + stampNumber + ' …');
+
+    try {
+      const data = await callApi(DETAIL_URL, 'GET', { StampNumber: stampNumber });
+      clearStatus(detailStatus);
+      renderDetail(data);
+    } catch (err) {
+      if (err && err.notJson) {
+        setStatus(detailStatus, 'Response was not JSON — showing raw text below.', 'error');
+        detailBody.innerHTML = '<pre class="raw-body">' + escapeHtml(err.rawText) + '</pre>';
+      } else {
+        setStatus(detailStatus, 'Error: ' + (err.message || err), 'error');
+      }
+    }
+  }
+
+  backBtn.addEventListener('click', () => {
+    detailSection.style.display = 'none';
+    resultsSection.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cnic = normalizeCnic(cnicInput.value);
+    if (cnic.length !== 13) {
+      setStatus(listStatus, 'CNIC should be 13 digits (you entered ' + cnic.length + ').', 'error');
+      return;
+    }
+
+    detailSection.style.display = 'none';
+    resultsSection.style.display = 'none';
+    clearStatus(listStatus);
+    setStatus(listStatus, 'Querying stamps for ' + cnic + ' …');
+    searchBtn.disabled = true;
+
+    try {
+      const data = await callApi(LIST_URL, 'POST', { PersonCNIC: cnic });
+      clearStatus(listStatus);
+      const stamps = Array.isArray(data) ? data : (data.data || data.Data || []);
+      renderList(stamps);
+    } catch (err) {
+      if (err && err.notJson) {
+        setStatus(listStatus, 'Response was not JSON — raw text below (also logged to console).', 'error');
+        resultsTableWrap.innerHTML = '<pre class="raw-body">' + escapeHtml(err.rawText) + '</pre>';
+        resultsTitle.textContent = 'Raw response';
+        exportCsvBtn.style.display = 'none';
+        resultsSection.style.display = 'block';
+      } else {
+        setStatus(listStatus, 'Error: ' + (err.message || err), 'error');
+      }
+    } finally {
+      searchBtn.disabled = false;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
