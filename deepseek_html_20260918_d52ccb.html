@@ -1,0 +1,98 @@
+<script>
+const BASE = "https://es.punjab-zameen.gov.pk/eStampCitizenPortal/api/Proxy";
+
+/* ------------------------------------------------------------------ */
+/*  Generic POST helper — tries JSON body first, then query string    */
+/* ------------------------------------------------------------------ */
+async function postJson(path, payload, queryKey){
+  const url = `${BASE}${path}`;
+  const headers = {
+    "Accept": "application/json",
+    "Content-Type": "application/json;charset=utf-8"
+  };
+
+  // Attempt 1: JSON body
+  let res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  // If the server didn't like the body binding, try query-string form
+  if (!res.ok && res.status >= 400 && queryKey){
+    const qs = new URLSearchParams(payload).toString();
+    res = await fetch(`${url}?${qs}`, {
+      method: "POST",
+      headers: { "Accept": "application/json" }
+    });
+  }
+
+  const text = await res.text();
+  let data;
+  try { data = text ? JSON.parse(text) : null; }
+  catch { data = { _raw: text }; }
+
+  if (!res.ok){
+    const msg = (data && (data.Message || data.message || data.ExceptionMessage)) || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = data;
+    throw err;
+  }
+  return data;
+}
+
+/* ------------------------------------------------------------------ */
+/*  1. Search stamps by CNIC (POST)                                    */
+/* ------------------------------------------------------------------ */
+async function searchByCnic(){
+  const cnic = document.getElementById("cnicInput").value.replace(/\D/g, "");
+  if (cnic.length !== 13){
+    document.getElementById("searchMsg").innerHTML =
+      '<span class="error">Please enter a valid 13-digit CNIC.</span>';
+    return;
+  }
+
+  document.getElementById("searchMsg").innerHTML =
+    '<span class="loading">Searching records…</span>';
+  document.getElementById("listCard").style.display = "none";
+  document.getElementById("detailCard").style.display = "none";
+
+  try {
+    const data = await postJson(
+      "/Reporting/GetStampRetrievalwithCNIC",
+      { PersonCNIC: cnic },
+      "PersonCNIC"
+    );
+    renderStampList(data);
+    document.getElementById("searchMsg").innerHTML = "";
+  } catch (err){
+    document.getElementById("searchMsg").innerHTML =
+      `<span class="error">Error: ${esc(err.message)}</span>`;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  2. Load single-stamp details (POST)                                */
+/* ------------------------------------------------------------------ */
+async function loadStampDetails(stampNumber){
+  const card = document.getElementById("detailCard");
+  const body = document.getElementById("detailBody");
+
+  card.style.display = "block";
+  document.getElementById("detailTitle").textContent = `Stamp ${stampNumber}`;
+  body.innerHTML = '<div class="loading">Loading details…</div>';
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  try {
+    const data = await postJson(
+      "/ChallanForm/SearchStamp",
+      { StampNumber: stampNumber },
+      "StampNumber"
+    );
+    renderStampDetails(data);
+  } catch (err){
+    body.innerHTML = `<div class="error">Error: ${esc(err.message)}</div>`;
+  }
+}
+</script>
