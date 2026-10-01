@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پٹواری حلقہ — Target Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Spectral+SC:wght@600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  // Fallback in case the primary CDN is blocked
+  window.addEventListener('DOMContentLoaded', () => {
+    if (typeof Chart === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js';
+      document.head.appendChild(s);
+    }
+  });
+</script>
+<style>
+  :root{
+    --ink:#1D2321;
+    --paper:#F4F1E8;
+    --paper-2:#ECE7D8;
+    --navy:#1B3A45;
+    --navy-2:#122A33;
+    --gold:#B8863A;
+    --gold-light:#E4C989;
+    --green:#3F6E52;
+    --brick:#A34426;
+    --line:#C9C0A5;
+    --rule:#1B3A4522;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Spectral', Georgia, serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .urdu{ font-family:'Noto Nastaliq Urdu', serif; direction:rtl; unicode-bidi:isolate; line-height:2.1; }
+
+  /* ---------- header ---------- */
+  header{
+    background:linear-gradient(180deg,var(--navy) 0%, var(--navy-2) 100%);
+    color:var(--paper);
+    padding:2.6rem 1.5rem 2.2rem;
+    border-bottom:6px solid var(--gold);
+  }
+  .header-inner{max-width:1180px;margin:0 auto;}
+  .eyebrow-row{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.5rem;}
+  .kicker{
+    font-family:'Spectral SC', serif;
+    font-size:.78rem;
+    letter-spacing:.04em;
+    color:var(--gold-light);
+  }
+  .date-tag{font-size:.8rem;color:#C9D6D2;font-style:italic;}
+  h1{
+    font-size:2.5rem;
+    font-weight:600;
+    margin:.35rem 0 .15rem;
+    line-height:1.15;
+  }
+  .title-urdu{
+    font-family:'Noto Nastaliq Urdu', serif;
+    direction:rtl;
+    font-size:2rem;
+    color:var(--gold-light);
+    margin:0 0 1.1rem;
+    line-height:2;
+  }
+  .stat-row{display:flex;gap:0;flex-wrap:wrap;border-top:1px solid #ffffff22;margin-top:1.2rem;}
+  .stat{
+    flex:1;min-width:150px;
+    padding:1rem 1.4rem 0 0;
+    border-right:1px solid #ffffff22;
+  }
+  .stat:last-child{border-right:none;}
+  .stat .num{font-size:2.1rem;font-weight:600;color:#fff;}
+  .stat .lbl{font-size:.78rem;color:#C9D6D2;margin-top:.15rem;}
+
+  /* ---------- layout ---------- */
+  main{max-width:1180px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+  .toolbar{
+    display:flex;gap:1rem;align-items:center;flex-wrap:wrap;
+    margin-bottom:1.6rem;
+  }
+  .search-wrap{position:relative;flex:1;min-width:240px;}
+  input#search{
+    width:100%;
+    font-family:'Spectral', serif;
+    font-size:1rem;
+    padding:.7rem 1rem .7rem 2.4rem;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:2px;
+    color:var(--ink);
+  }
+  input#search:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .search-wrap svg{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);opacity:.5;}
+  select#sortBy, select#dateSel{
+    font-family:'Spectral', serif;
+    padding:.7rem .9rem;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:2px;
+    color:var(--ink);
+  }
+  button#refreshBtn{
+    font-family:'Spectral', serif;
+    padding:.7rem 1.1rem;
+    border:1px solid var(--navy);
+    background:var(--navy);
+    color:#fff;
+    border-radius:2px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  button#refreshBtn:hover{background:var(--navy-2);}
+  button#refreshBtn:disabled{opacity:.6;cursor:default;}
+
+  #statusLine{font-size:.85rem;color:#5c5c54;margin:-.9rem 0 1.6rem;font-style:italic;}
+  #statusLine.err{color:var(--brick);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1.55fr 1fr;
+    gap:1.6rem;
+    margin-bottom:2.2rem;
+  }
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:2px;
+  }
+  .panel-head{
+    padding:1.1rem 1.3rem .9rem;
+    border-bottom:1px solid var(--rule);
+    display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .panel-head h2{font-size:1.05rem;font-weight:600;margin:0;}
+  .panel-head .n{font-size:.78rem;color:#8a8578;}
+  .chart-body{padding:1rem 1.3rem 1.4rem;}
+  #barChart{max-height:640px;}
+
+  /* ---------- performer cards ---------- */
+  .performers{display:flex;flex-direction:column;gap:1.2rem;padding:1.2rem 1.3rem;}
+  .perf-card{
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:1rem 1.1rem;
+    position:relative;
+    overflow:hidden;
+  }
+  .perf-card.best{border-color:var(--green);background:#F2F7F3;}
+  .perf-card.low{border-color:var(--brick);background:#FBF2EE;}
+  .perf-card .tag{font-size:.72rem;letter-spacing:.03em;font-weight:600;}
+  .perf-card.best .tag{color:var(--green);}
+  .perf-card.low .tag{color:var(--brick);}
+  .perf-card .circle-name{
+    font-family:'Noto Nastaliq Urdu', serif;
+    direction:rtl;
+    font-size:1.5rem;
+    margin:.3rem 0 .2rem;
+    line-height:1.9;
+  }
+  .perf-card .pct{font-size:1.7rem;font-weight:600;}
+  .perf-card .detail{font-size:.8rem;color:#6b675c;margin-top:.1rem;}
+  .empty-note{padding:1.2rem 1.3rem;font-size:.88rem;color:#6b675c;font-style:italic;}
+
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;}
+  thead th{
+    text-align:left;
+    font-size:.75rem;
+    letter-spacing:.03em;
+    color:#6b675c;
+    font-weight:600;
+    padding:.7rem 1rem;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  thead th:hover{color:var(--navy);}
+  thead th.num, td.num{text-align:right;}
+  tbody td{
+    padding:.65rem 1rem;
+    border-bottom:1px solid var(--rule);
+    font-size:.95rem;
+  }
+  td.circle-cell{font-family:'Noto Nastaliq Urdu', serif;direction:rtl;font-size:1.2rem;line-height:1.8;}
+  tbody tr:hover{background:var(--paper-2);}
+  .pct-pill{
+    display:inline-block;padding:.2rem .55rem;border-radius:20px;
+    font-size:.8rem;font-weight:600;
+  }
+  .pct-pill.high{background:#E4EFE7;color:var(--green);}
+  .pct-pill.mid{background:#F5EBD5;color:var(--gold);}
+  .pct-pill.low{background:#F5E3DA;color:var(--brick);}
+  .pct-pill.none{background:#EEEEE8;color:#9a9689;}
+  .bar-track{
+    width:80px;height:6px;background:#EAE5D5;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:.5rem;
+  }
+  .bar-fill{height:100%;background:var(--gold);}
+
+  /* ---------- date-wise ---------- */
+  .panel.spaced{margin-bottom:2.2rem;}
+  .chart-body.daily-chart{height:380px;position:relative;}
+  .hint{font-size:.78rem;color:#8a8578;font-style:italic;padding:0 1.3rem 1rem;}
+  .matrix-wrap{overflow:auto;max-height:640px;}
+  table.matrix{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;}
+  table.matrix th, table.matrix td{
+    padding:.5rem .85rem;border-bottom:1px solid var(--rule);
+    white-space:nowrap;font-size:.9rem;text-align:right;background:#fff;
+  }
+  table.matrix thead th{
+    position:sticky;top:0;z-index:2;cursor:default;
+    border-bottom:1px solid var(--line);
+  }
+  table.matrix thead th[data-date]{cursor:pointer;}
+  table.matrix thead th[data-date]:hover{background:var(--paper-2);color:var(--navy);}
+  table.matrix thead th.sel{background:var(--gold-light);color:var(--navy-2);}
+  table.matrix .sticky-col{
+    position:sticky;left:0;z-index:1;border-right:1px solid var(--line);
+    min-width:150px;
+  }
+  table.matrix thead th.sticky-col{z-index:3;}
+  table.matrix td.circle-cell{font-size:1.1rem;}
+  table.matrix td.empty{color:#cfc9b6;}
+  table.matrix td.zero{color:#a8a38f;}
+  table.matrix td.sel-col{box-shadow:inset 2px 0 0 var(--gold),inset -2px 0 0 var(--gold);}
+  table.matrix th.total-col, table.matrix td.total-col{
+    font-weight:600;border-left:1px solid var(--line);background:#FAF8F1;
+  }
+  table.matrix tbody tr:hover td{background:var(--paper-2);}
+  table.matrix tbody tr:hover td.total-col{background:var(--paper-2);}
+  table.matrix tfoot td{
+    position:sticky;bottom:0;z-index:2;font-weight:600;
+    background:var(--paper-2);border-top:1px solid var(--line);border-bottom:none;
+  }
+  table.matrix tfoot td.sticky-col{z-index:3;}
+
+  footer{
+    max-width:1180px;margin:0 auto;padding:0 1.5rem 3rem;
+    font-size:.78rem;color:#8a8578;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="eyebrow-row">
+      <span class="kicker">Land Revenue &amp; Estate — Progress Monitoring</span>
+      <span class="date-tag" id="asOf">loading…</span>
+    </div>
+    <h1>Patwar Circle Dashboard</h1>
+    <div class="title-urdu">پٹواری حلقہ کارکردگی</div>
+    <div class="stat-row" id="statRow">
+      <div class="stat"><div class="num" id="statCircles">—</div><div class="lbl">Circles</div></div>
+      <div class="stat"><div class="num" id="statTarget">—</div><div class="lbl">Total Target</div></div>
+      <div class="stat"><div class="num" id="statAchieved">—</div><div class="lbl" id="statAchievedLbl">Total Achieved</div></div>
+      <div class="stat"><div class="num" id="statPct">—</div><div class="lbl" id="statPctLbl">Overall Completion</div></div>
+      <div class="stat"><div class="num" id="statLatest">—</div><div class="lbl" id="statLatestLbl">Latest Day</div></div>
+      <div class="stat"><div class="num" id="statAvg">—</div><div class="lbl">Avg per Reported Day</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Search a circle — نام تلاش کریں…" dir="auto">
+    </div>
+    <select id="sortBy">
+      <option value="pct-desc">Sort: % completion (high→low)</option>
+      <option value="pct-asc">Sort: % completion (low→high)</option>
+      <option value="target-desc">Sort: Target (high→low)</option>
+      <option value="achieved-desc">Sort: Achieved (high→low)</option>
+      <option value="name-asc">Sort: Circle name</option>
+    </select>
+    <select id="dateSel" hidden>
+      <option value="all">View: All dates (total)</option>
+    </select>
+    <button id="refreshBtn">↻ Refresh from sheet</button>
+  </div>
+  <div id="statusLine">Fetching data…</div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="chartTitle">Achieved vs. Target by Circle</h2>
+        <span class="n" id="chartCount"></span>
+      </div>
+      <div class="chart-body"><canvas id="barChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Performers</h2></div>
+      <div id="performers" class="performers"></div>
+    </div>
+  </div>
+
+  <div class="panel spaced" id="dailyPanel">
+    <div class="panel-head">
+      <h2>Date-wise Progress</h2>
+      <span class="n" id="dailyCount"></span>
+    </div>
+    <div class="chart-body daily-chart" id="dailyChartBody"><canvas id="dailyChart"></canvas></div>
+    <div class="hint" id="dailyHint">Click a bar to view only that day across all circles.</div>
+    <div class="empty-note" id="dailyEmpty" hidden>
+      No dates found in the sheet yet. Add dates as column headers from column D onward (e.g. <b>01-Oct-2026</b>) and enter each circle's achieved count for that day underneath. They'll appear here automatically.
+    </div>
+  </div>
+
+  <div class="panel spaced" id="matrixPanel" hidden>
+    <div class="panel-head">
+      <h2>Circle × Date</h2>
+      <span class="n" id="matrixCount"></span>
+    </div>
+    <div class="matrix-wrap"><table class="matrix" id="matrixTable"></table></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>All Circles</h2>
+      <span class="n" id="tableCount"></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th data-key="name">Patwar Circle</th>
+          <th data-key="target" class="num">Target</th>
+          <th data-key="achieved" class="num" id="thAchieved">Achieved</th>
+          <th data-key="pct" class="num">% Completion</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer>
+  Data source: connected Google Sheet, fetched live on load and on refresh. Columns A–C are Circle, Target and Achieved (total); every column from D onward is treated as one day, with the date as its header. If the Achieved column is blank, the total is the sum of the daily columns. Rows with no "achieved" value yet are excluded from performer rankings.
+</footer>
+
+<script>
+const SHEET_ID = "1VM4Jz-MKjQpx3BclL2FJZj_p23dL2JpcUWbLXc_KEc8";
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=Sheet1`;
+
+let baseRows = [];  // {i, name, target, total|null, daily:{dateKey:number|null}}
+let dates = [];     // [{key, label, full, ts}] sorted, only dates that have data
+let viewDate = "all";
+let rows = [];      // view rows: {i, name, target, achieved, pct|null} for the selected view
+let chart = null;
+let dailyChart = null;
+let sortState = "pct-desc";
+
+const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+// Decide whether numeric headers like 03/10/2026 are day-first (default) or month-first.
+function detectDayFirst(headers){
+  let dmyOnly = false, mdyOnly = false;
+  headers.forEach(h => {
+    const m = h.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.]\d{2,4})?$/);
+    if(m){ if(+m[1] > 12) dmyOnly = true; if(+m[2] > 12) mdyOnly = true; }
+  });
+  return !(mdyOnly && !dmyOnly);
+}
+
+// Accepts 2026-10-01, 01/10/2026, 1-10-26, 01-Oct-2026, 1 Oct, Oct 1, 1st October 2026 ...
+function parseDateLabel(s, dayFirst){
+  s = String(s).trim();
+  const now = new Date().getFullYear();
+  const mk = (y, m, d) => {
+    y = +y; m = +m; d = +d;
+    if(y < 100) y += 2000;
+    const dt = new Date(y, m, d);
+    return (dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d) ? dt : null;
+  };
+  const mon = t => MONTHS.indexOf(t.slice(0,3).toLowerCase());
+  const pair = (a, b) => {
+    let d = dayFirst ? +a : +b, mo = dayFirst ? +b : +a;
+    if(mo > 12 && d <= 12){ const t = d; d = mo; mo = t; }
+    return [d, mo];
+  };
+  let m;
+  if((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return mk(m[1], m[2]-1, m[3]);
+  if((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))){
+    const [d, mo] = pair(m[1], m[2]);
+    return mk(m[3], mo-1, d);
+  }
+  if((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?[\s\-\/.,]*([A-Za-z]{3,})\.?[\s\-\/.,]*(\d{2,4})?$/))){
+    const mi = mon(m[2]);
+    if(mi >= 0) return mk(m[3] || now, mi, m[1]);
+  }
+  if((m = s.match(/^([A-Za-z]{3,})\.?[\s\-\/.,]*(\d{1,2})(?:st|nd|rd|th)?(?:[\s\-\/.,]+(\d{2,4}))?$/))){
+    const mi = mon(m[1]);
+    if(mi >= 0) return mk(m[3] || now, mi, m[2]);
+  }
+  if((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})$/))){
+    const [d, mo] = pair(m[1], m[2]);
+    return mk(now, mo-1, d);
+  }
+  return null;
+}
+
+function isoKey(dt){
+  const p = n => String(n).padStart(2,'0');
+  return dt.getFullYear() + "-" + p(dt.getMonth()+1) + "-" + p(dt.getDate());
+}
+function fmtDay(ts, withYear){
+  return new Date(ts).toLocaleDateString('en-GB', Object.assign({day:'2-digit', month:'short'}, withYear ? {year:'numeric'} : {}));
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function parseCSV(text){
+  // RFC4180-ish parser: handles quoted fields, commas, embedded quotes
+  const out = [];
+  let row = [], field = "", inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field = ""; }
+      else if(c === '\n'){ row.push(field); out.push(row); row = []; field = ""; }
+      else if(c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); out.push(row); }
+  return out;
+}
+
+function toNumber(v){
+  if(v === undefined) return null;
+  const cleaned = String(v).replace(/,/g,'').trim();
+  if(cleaned === "") return null;
+  const n = Number(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+async function loadData(){
+  const status = document.getElementById('statusLine');
+  const btn = document.getElementById('refreshBtn');
+  status.classList.remove('err');
+  status.textContent = "Fetching data…";
+  btn.disabled = true;
+  try{
+    const res = await fetch(CSV_URL, {cache:"no-store"});
+    if(!res.ok) throw new Error("Sheet request failed (" + res.status + ")");
+    const text = await res.text();
+    const table = parseCSV(text).filter(r => r.some(c => c && c.trim() !== ""));
+    // first row = header; columns A-C = circle, target, achieved total; D onward = one column per date
+    const header = table[0] || [];
+    const dataRows = table.slice(1);
+
+    const dateHeaders = [];
+    for(let c = 3; c < header.length; c++){
+      const h = (header[c] || "").trim();
+      if(h !== "") dateHeaders.push({col:c, raw:h});
+    }
+    const dayFirst = detectDayFirst(dateHeaders.map(d => d.raw));
+    dateHeaders.forEach(d => {
+      d.date = parseDateLabel(d.raw, dayFirst);
+      d.key = d.date ? isoKey(d.date) : d.raw;
+    });
+
+    baseRows = dataRows
+      .map(r => {
+        const name = (r[0] || "").trim();
+        const target = toNumber(r[1]);
+        const sheetTotal = toNumber(r[2]);
+        const daily = {};
+        dateHeaders.forEach(d => {
+          const v = toNumber(r[d.col]);
+          if(v === null){ if(!(d.key in daily)) daily[d.key] = null; }
+          else daily[d.key] = (daily[d.key] || 0) + v;   // two columns with the same date are added together
+        });
+        const vals = Object.values(daily).filter(v => v !== null);
+        const total = sheetTotal !== null ? sheetTotal : (vals.length ? vals.reduce((s,v)=>s+v,0) : null);
+        return { name, target, total, daily };
+      })
+      .filter(r => r.name !== "")
+      .map((r, i) => Object.assign({i}, r));
+
+    // keep only dates where at least one circle has an entry (skips empty future columns)
+    const seen = new Map();
+    dateHeaders.forEach(d => {
+      if(seen.has(d.key)) return;
+      const hasData = baseRows.some(b => b.daily[d.key] !== null && b.daily[d.key] !== undefined);
+      if(hasData) seen.set(d.key, { key:d.key, raw:d.raw, ts: d.date ? d.date.getTime() : null });
+    });
+    dates = [...seen.values()];
+    if(dates.every(d => d.ts !== null)) dates.sort((a,b) => a.ts - b.ts);
+    const years = new Set(dates.filter(d => d.ts !== null).map(d => new Date(d.ts).getFullYear()));
+    dates.forEach(d => {
+      d.label = d.ts !== null ? fmtDay(d.ts, years.size > 1) : d.raw;
+      d.full  = d.ts !== null ? fmtDay(d.ts, true) : d.raw;
+    });
+
+    if(viewDate !== "all" && !dates.some(d => d.key === viewDate)) viewDate = "all";
+    populateDateSelect();
+    applyView();
+
+    document.getElementById('asOf').textContent = "as of " + new Date().toLocaleString();
+    status.textContent = `Loaded ${baseRows.length} circles` + (dates.length ? ` and ${dates.length} reported date${dates.length>1?'s':''}` : "") + " from the sheet.";
+  } catch(err){
+    status.classList.add('err');
+    status.textContent = "Couldn't load the sheet — " + err.message + ". Make sure it's shared as 'Anyone with the link can view', then refresh.";
+    btn.disabled = false;
+    return;
+  }
+
+  try{
+    render();
+  } catch(err){
+    status.classList.add('err');
+    status.textContent = "Data loaded, but the display failed to render — " + err.message + ". Try reloading the page.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function populateDateSelect(){
+  const sel = document.getElementById('dateSel');
+  sel.innerHTML = `<option value="all">View: All dates (total)</option>` +
+    dates.map(d => `<option value="${esc(d.key)}">View: only ${esc(d.full)}</option>`).join('');
+  sel.value = viewDate;
+  sel.hidden = dates.length === 0;
+}
+
+// rows = what the selected view shows (all dates combined, or one single day)
+function applyView(){
+  rows = baseRows.map(b => {
+    const achieved = viewDate === "all" ? b.total : (b.daily[viewDate] ?? null);
+    const pct = (achieved !== null && b.target) ? (achieved / b.target * 100) : null;
+    return { i:b.i, name:b.name, target:b.target, achieved, pct };
+  });
+}
+
+function setView(key){
+  viewDate = key;
+  document.getElementById('dateSel').value = key;
+  applyView();
+  render();
+}
+
+function computeDaily(){
+  let cum = 0;
+  return dates.map(d => {
+    let sum = 0, n = 0;
+    baseRows.forEach(b => {
+      const v = b.daily[d.key];
+      if(v !== null && v !== undefined){ sum += v; n++; }
+    });
+    cum += sum;
+    return Object.assign({}, d, { sum, n, cum });
+  });
+}
+
+function renderDaily(){
+  const body = document.getElementById('dailyChartBody');
+  const hint = document.getElementById('dailyHint');
+  const empty = document.getElementById('dailyEmpty');
+  const daily = computeDaily();
+
+  // header stats about days
+  const latest = daily[daily.length - 1];
+  const sumAll = daily.reduce((s,d)=>s+d.sum, 0);
+  document.getElementById('statLatest').textContent = latest ? latest.sum.toLocaleString() : "—";
+  document.getElementById('statLatestLbl').textContent = latest ? "Latest Day (" + latest.label + ")" : "Latest Day";
+  document.getElementById('statAvg').textContent = daily.length ? (sumAll / daily.length).toLocaleString(undefined, {maximumFractionDigits:1}) : "—";
+  document.getElementById('dailyCount').textContent = daily.length ? daily.length + " day" + (daily.length>1?"s":"") + " reported" : "";
+
+  if(daily.length === 0){
+    body.hidden = true; hint.hidden = true; empty.hidden = false;
+    if(dailyChart){ dailyChart.destroy(); dailyChart = null; }
+    return;
+  }
+  body.hidden = false; hint.hidden = false; empty.hidden = true;
+
+  if(typeof Chart === 'undefined'){
+    body.innerHTML = '<p style="color:#A34426;font-style:italic;">Chart library failed to load from the CDN — the Circle × Date table below still has the full data.</p>';
+    return;
+  }
+  if(!document.getElementById('dailyChart')){
+    body.innerHTML = '<canvas id="dailyChart"></canvas>';
+  }
+
+  const totalTarget = baseRows.reduce((s,r)=>s+(r.target||0),0);
+  const barColor = key => viewDate === "all" ? '#B8863A' : (key === viewDate ? '#8C6322' : '#E1CFA3');
+
+  if(dailyChart) dailyChart.destroy();
+  dailyChart = new Chart(document.getElementById('dailyChart'), {
+    data: {
+      labels: daily.map(d => d.label),
+      datasets: [
+        { type:'bar', label:'Achieved that day', data: daily.map(d => d.sum),
+          backgroundColor: daily.map(d => barColor(d.key)), borderRadius:2, yAxisID:'y', order:3 },
+        { type:'line', label:'Cumulative achieved', data: daily.map(d => d.cum),
+          borderColor:'#1B3A45', backgroundColor:'#1B3A45', tension:.25, pointRadius:3, yAxisID:'y2', order:1 },
+        { type:'line', label:'Total target', data: daily.map(() => totalTarget),
+          borderColor:'#A34426', borderDash:[6,4], borderWidth:1.5, pointRadius:0, yAxisID:'y2', order:2 }
+      ]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      onClick: (evt, els, ch) => {
+        const pts = ch.getElementsAtEventForMode(evt, 'index', {intersect:false}, true);
+        if(!pts.length) return;
+        const key = daily[pts[0].index].key;
+        setView(key === viewDate ? "all" : key);
+      },
+      scales: {
+        x: { grid:{display:false}, ticks:{ font:{family:'Spectral'}, autoSkip:true, maxRotation:60 } },
+        y: { beginAtZero:true, position:'left', grid:{color:'#1B3A4514'}, title:{display:true, text:'Per day', font:{family:'Spectral'}}, ticks:{font:{family:'Spectral'}} },
+        y2:{ beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, suggestedMax: totalTarget * 1.05, title:{display:true, text:'Cumulative vs. target', font:{family:'Spectral'}}, ticks:{font:{family:'Spectral'}} }
+      },
+      plugins: {
+        legend: { position:'top', labels:{ font:{family:'Spectral'}, boxWidth:12 } },
+        tooltip: {
+          bodyFont:{family:'Spectral'},
+          callbacks: {
+            title: items => daily[items[0].dataIndex].full,
+            footer: items => daily[items[0].dataIndex].n + " of " + baseRows.length + " circles reported"
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderMatrix(list){
+  const panel = document.getElementById('matrixPanel');
+  const table = document.getElementById('matrixTable');
+  if(dates.length === 0){ panel.hidden = true; return; }
+  panel.hidden = false;
+
+  let maxCell = 0;
+  baseRows.forEach(b => dates.forEach(d => { const v = b.daily[d.key]; if(v > maxCell) maxCell = v; }));
+
+  const head = `<thead><tr>
+      <th class="sticky-col">Patwar Circle</th>
+      ${dates.map(d => `<th data-date="${esc(d.key)}" class="${d.key === viewDate ? 'sel' : ''}" title="${esc(d.full)} — click to view only this day">${esc(d.label)}</th>`).join('')}
+      <th class="total-col">Total</th>
+      <th class="total-col">% of Target</th>
+    </tr></thead>`;
+
+  const bodyRows = list.map(r => {
+    const b = baseRows[r.i];
+    const cells = dates.map(d => {
+      const v = b.daily[d.key];
+      const sel = d.key === viewDate ? ' sel-col' : '';
+      if(v === null || v === undefined) return `<td class="empty${sel}">·</td>`;
+      if(v === 0) return `<td class="zero${sel}">0</td>`;
+      const a = (0.08 + 0.42 * (maxCell ? v / maxCell : 0)).toFixed(2);
+      return `<td class="${sel.trim()}" style="background:rgba(184,134,58,${a})">${v.toLocaleString()}</td>`;
+    }).join('');
+    const pct = (b.total !== null && b.target) ? b.total / b.target * 100 : null;
+    return `<tr>
+      <td class="sticky-col circle-cell">${b.name}</td>
+      ${cells}
+      <td class="total-col">${b.total !== null ? b.total.toLocaleString() : "—"}</td>
+      <td class="total-col"><span class="pct-pill ${pctClass(pct)}">${pct === null ? "No data" : pct.toFixed(1) + "%"}</span></td>
+    </tr>`;
+  }).join('');
+
+  // footer = totals for the circles currently shown
+  const dayTotals = dates.map(d => list.reduce((s,r) => s + (baseRows[r.i].daily[d.key] || 0), 0));
+  const grand = list.reduce((s,r) => s + (baseRows[r.i].total || 0), 0);
+  const tgt = list.reduce((s,r) => s + (baseRows[r.i].target || 0), 0);
+  const foot = `<tfoot><tr>
+      <td class="sticky-col">Total</td>
+      ${dayTotals.map(t => `<td>${t.toLocaleString()}</td>`).join('')}
+      <td class="total-col" style="background:var(--paper-2)">${grand.toLocaleString()}</td>
+      <td class="total-col" style="background:var(--paper-2)">${tgt ? (grand / tgt * 100).toFixed(1) + "%" : "—"}</td>
+    </tr></tfoot>`;
+
+  table.innerHTML = head + `<tbody>${bodyRows}</tbody>` + foot;
+  document.getElementById('matrixCount').textContent = list.length + " of " + baseRows.length + " circles";
+}
+
+function pctClass(pct){
+  if(pct === null) return "none";
+  if(pct >= 90) return "high";
+  if(pct >= 60) return "mid";
+  return "low";
+}
+
+function computeStats(list){
+  const totalTarget = list.reduce((s,r)=>s+(r.target||0),0);
+  const totalAchieved = list.reduce((s,r)=>s + (r.achieved||0),0);
+  const overallPct = totalTarget ? (totalAchieved/totalTarget*100) : 0;
+  return {totalTarget, totalAchieved, overallPct};
+}
+
+function render(){
+  const q = document.getElementById('search').value.trim();
+  let list = rows.filter(r => q === "" || r.name.includes(q));
+
+  // stats always over full dataset, not filtered
+  const {totalTarget, totalAchieved, overallPct} = computeStats(rows);
+  document.getElementById('statCircles').textContent = rows.length;
+  document.getElementById('statTarget').textContent = totalTarget.toLocaleString();
+  document.getElementById('statAchieved').textContent = totalAchieved.toLocaleString();
+  document.getElementById('statPct').textContent = overallPct.toFixed(1) + "%";
+
+  // sort
+  const sorted = [...list].sort((a,b) => {
+    switch(sortState){
+      case "pct-desc": return (b.pct ?? -1) - (a.pct ?? -1);
+      case "pct-asc": {
+        const av = a.pct === null ? Infinity : a.pct;
+        const bv = b.pct === null ? Infinity : b.pct;
+        return av - bv;
+      }
+      case "target-desc": return (b.target||0) - (a.target||0);
+      case "achieved-desc": return (b.achieved||0) - (a.achieved||0);
+      case "name-asc": return a.name.localeCompare(b.name, 'ur');
+      default: return 0;
+    }
+  });
+
+  // labels follow the selected view (all dates vs a single day)
+  const day = viewDate === "all" ? null : dates.find(d => d.key === viewDate);
+  document.getElementById('statAchievedLbl').textContent = day ? "Achieved on " + day.label : "Total Achieved";
+  document.getElementById('statPctLbl').textContent = day ? "Day as % of Target" : "Overall Completion";
+  document.getElementById('chartTitle').textContent = day ? "Achieved on " + day.label + " vs. Target by Circle" : "Achieved vs. Target by Circle";
+  document.getElementById('thAchieved').textContent = day ? "Achieved (" + day.label + ")" : "Achieved";
+
+  renderChart(sorted);
+  renderPerformers(rows);
+  renderDaily();
+  renderMatrix(sorted);
+  renderTable(sorted);
+
+  document.getElementById('chartCount').textContent = sorted.length + " shown";
+  document.getElementById('tableCount').textContent = sorted.length + " of " + rows.length;
+}
+
+function renderChart(list){
+  const ctx = document.getElementById('barChart');
+  if(typeof Chart === 'undefined'){
+    ctx.parentElement.innerHTML = '<p style="color:#A34426;font-style:italic;">Chart library failed to load from the CDN — the table below still has full data.</p>';
+    return;
+  }
+  const labels = list.map(r => r.name);
+  const targets = list.map(r => r.target || 0);
+  const achieved = list.map(r => r.achieved || 0);
+  const height = Math.max(320, list.length * 26);
+  ctx.parentElement.style.height = height + "px";
+  ctx.style.height = height + "px";
+
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Target', data: targets, backgroundColor:'#E4DFC9', borderRadius:2, barPercentage:0.8, categoryPercentage:0.85 },
+        { label:'Achieved', data: achieved, backgroundColor:'#B8863A', borderRadius:2, barPercentage:0.8, categoryPercentage:0.85 }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { beginAtZero:true, grid:{color:'#1B3A4514'}, ticks:{font:{family:'Spectral'}} },
+        y: { grid:{display:false}, ticks:{ font:{family:"'Noto Nastaliq Urdu'", size:13}, autoSkip:false } }
+      },
+      plugins: {
+        legend: { position:'top', labels:{ font:{family:'Spectral'}, boxWidth:12 } },
+        tooltip: { rtl:true, bodyFont:{family:'Spectral'}, titleFont:{family:"'Noto Nastaliq Urdu'"} }
+      }
+    }
+  });
+}
+
+function renderPerformers(all){
+  const wrap = document.getElementById('performers');
+  const withPct = all.filter(r => r.pct !== null);
+  if(withPct.length === 0){
+    wrap.innerHTML = `<div class="empty-note">No "achieved" values ${viewDate === "all" ? "yet in the sheet" : "for this date"} — once figures are entered, best/low performers will appear here automatically.</div>`;
+    return;
+  }
+  const best = withPct.reduce((a,b)=> b.pct > a.pct ? b : a);
+  const low = withPct.reduce((a,b)=> b.pct < a.pct ? b : a);
+  wrap.innerHTML = `
+    <div class="perf-card best">
+      <div class="tag">BEST PERFORMER</div>
+      <div class="circle-name">${best.name}</div>
+      <div class="pct">${best.pct.toFixed(1)}%</div>
+      <div class="detail">${best.achieved.toLocaleString()} of ${best.target.toLocaleString()} achieved</div>
+    </div>
+    <div class="perf-card low">
+      <div class="tag">LOW PERFORMER</div>
+      <div class="circle-name">${low.name}</div>
+      <div class="pct">${low.pct.toFixed(1)}%</div>
+      <div class="detail">${low.achieved.toLocaleString()} of ${low.target.toLocaleString()} achieved</div>
+    </div>
+    ${withPct.length < all.length ? `<div class="empty-note">${all.length - withPct.length} circle(s) still awaiting "achieved" data, excluded from ranking.</div>` : ''}
+  `;
+}
+
+function renderTable(list){
+  const body = document.getElementById('tableBody');
+  if(list.length === 0){
+    body.innerHTML = `<tr><td colspan="4" style="padding:1.4rem 1rem;color:#8a8578;">No circles match your search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map(r => {
+    const pctVal = r.pct === null ? null : Math.max(0, Math.min(100, r.pct));
+    const pctLabel = r.pct === null ? "No data" : r.pct.toFixed(1) + "%";
+    const cls = pctClass(r.pct);
+    return `
+      <tr>
+        <td class="circle-cell">${r.name}</td>
+        <td class="num">${r.target !== null ? r.target.toLocaleString() : "—"}</td>
+        <td class="num">${r.achieved !== null ? r.achieved.toLocaleString() : "—"}</td>
+        <td class="num">
+          <span class="bar-track"><span class="bar-fill" style="width:${pctVal ?? 0}%"></span></span>
+          <span class="pct-pill ${cls}">${pctLabel}</span>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('sortBy').addEventListener('change', (e)=>{ sortState = e.target.value; render(); });
+document.getElementById('dateSel').addEventListener('change', (e)=> setView(e.target.value));
+document.getElementById('matrixTable').addEventListener('click', (e)=>{
+  const th = e.target.closest('th[data-date]');
+  if(!th) return;
+  const key = th.dataset.date;
+  setView(key === viewDate ? "all" : key);
+});
+document.getElementById('refreshBtn').addEventListener('click', loadData);
+document.querySelectorAll('thead th[data-key]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    const map = { name:"name-asc", target:"target-desc", achieved:"achieved-desc", pct:"pct-desc" };
+    sortState = map[key] || "pct-desc";
+    document.getElementById('sortBy').value = sortState;
+    render();
+  });
+});
+
+loadData();
+</script>
+</body>
+</html>
