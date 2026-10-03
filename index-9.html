@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1a2b">
+<title>Call Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&family=Schibsted+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0f1a2b;
+    --ink-2:#1a2940;
+    --mist:#e9eef3;
+    --card:#ffffff;
+    --slate:#5b6b7f;
+    --line:#d5dde6;
+    --dial:#0e8f5e;
+    --dial-deep:#0a6b46;
+    --alert:#c2253b;
+    --alert-deep:#98172b;
+    --amber:#b7791f;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --font-ur:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq','Alvi Nastaleeq','Noto Naskh Arabic','Segoe UI',serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --mist:#0a121e; --card:#14202f; --line:#243449; --slate:#94a3b8; }
+    body{ color:#e8eef6 }
+    .dock{ background:rgba(10,18,30,.82) }
+    .chip,.upnext,.notes,.ghost{ color:#e8eef6 }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--font-ui);
+    background:var(--mist);
+    color:var(--ink);
+    min-height:100dvh;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  :focus-visible{outline:3px solid #3b82f6;outline-offset:3px;border-radius:10px}
+
+  .app{max-width:520px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px 0;display:flex;flex-direction:column;min-height:100dvh}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 2px 14px}
+  .brand h1{font-size:20px;font-weight:800;letter-spacing:-.01em}
+  .brand p{font-size:13px;color:var(--slate);margin-top:2px}
+  .icon-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);transition:transform .25s}
+  .icon-btn svg{width:20px;height:20px}
+  .icon-btn.spin svg{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  .chip{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px}
+  .chip b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .chip span{font-size:12.5px;color:var(--slate)}
+  .chip.ok b{color:var(--dial)} .chip.no b{color:var(--alert)}
+
+  .progress{display:flex;gap:3px;height:6px;margin:4px 2px 16px}
+  .progress i{flex:1;border-radius:3px;background:var(--line)}
+  .progress i.ok{background:var(--dial)} .progress i.no{background:var(--alert)} .progress i.now{background:var(--ink);box-shadow:0 0 0 2px var(--mist),0 0 0 3.5px var(--ink)}
+  @media (prefers-color-scheme:dark){ .progress i.now{background:#fff;box-shadow:0 0 0 2px var(--mist),0 0 0 3.5px #fff} }
+
+  /* warning banner */
+  .warn{display:flex;gap:10px;align-items:flex-start;background:#fff4e0;border:1px solid #f0cf94;color:#6b4710;border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;font-size:14px;line-height:1.4}
+  .warn p{flex:1}
+  .warn button{font-weight:700;text-decoration:underline;white-space:nowrap;padding:4px}
+
+  /* hero: incoming-call screen */
+  .call-card{
+    position:relative;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 0%,var(--ink-2) 0%,var(--ink) 70%);
+    color:#fff;border-radius:var(--radius-lg);
+    padding:22px 20px 20px;text-align:center;
+    box-shadow:0 18px 40px -18px rgba(15,26,43,.55);
+  }
+  .call-card.enter{animation:enter .38s cubic-bezier(.2,.8,.2,1)}
+  .call-card.enter.back{animation-name:enterBack}
+  @keyframes enter{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+  @keyframes enterBack{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+
+  .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;color:#a9b8cc;min-height:28px}
+  .badge{font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.1);color:#fff}
+  .badge.ok{background:rgba(14,143,94,.35)} .badge.no{background:rgba(194,37,59,.4)}
+
+  .name{
+    font-family:var(--font-ur);direction:rtl;unicode-bidi:plaintext;
+    font-size:clamp(30px,9vw,44px);font-weight:600;line-height:2.15;
+    padding:18px 4px 4px;word-break:break-word;
+  }
+  .phone{font-size:26px;font-weight:700;letter-spacing:.03em;font-variant-numeric:tabular-nums;direction:ltr}
+  .phone-sub{font-size:13.5px;color:#a9b8cc;margin-top:3px;font-variant-numeric:tabular-nums}
+  .invalid{margin:14px auto 0;max-width:340px;font-size:13.5px;background:rgba(183,121,31,.22);color:#ffd9a0;border-radius:var(--radius-sm);padding:9px 12px}
+
+  .call-btn{
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    margin-top:22px;height:68px;border-radius:99px;width:100%;
+    background:linear-gradient(180deg,#12a672,var(--dial));
+    color:#fff;font-size:19px;font-weight:800;text-decoration:none;
+    box-shadow:0 10px 24px -8px rgba(14,143,94,.8), inset 0 1px 0 rgba(255,255,255,.25);
+    transition:transform .12s, filter .12s;
+  }
+  .call-btn:active{transform:scale(.97);filter:brightness(.94)}
+  .call-btn svg{width:26px;height:26px}
+  .call-btn[aria-disabled="true"]{background:#3a4a62;box-shadow:none;pointer-events:none;color:#9fb0c8}
+
+  .upnext{margin:18px 2px 8px;font-size:14px}
+  .upnext h2{font-size:14px;font-weight:700;color:var(--slate);margin-bottom:6px}
+  .upnext ul{list-style:none;display:grid;gap:6px}
+  .upnext li{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 14px}
+  .upnext .u-name{font-family:var(--font-ur);direction:rtl;font-size:17px;line-height:2.1}
+  .upnext .u-num{font-size:13px;color:var(--slate);font-variant-numeric:tabular-nums}
+
+  .notes{margin:14px 2px 0;font-size:12.5px;color:var(--slate);line-height:1.6}
+
+  /* dock */
+  .dock{
+    position:sticky;bottom:0;margin:auto -16px 0;
+    padding:12px 16px max(14px,env(safe-area-inset-bottom));
+    background:rgba(233,238,243,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+  }
+  .decide{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{height:58px;border-radius:var(--radius-md);font-weight:800;font-size:16.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,filter .12s}
+  .btn:active{transform:scale(.97)}
+  .btn svg{width:22px;height:22px}
+  .btn.informed{background:var(--dial);color:#fff;box-shadow:0 8px 18px -10px var(--dial-deep)}
+  .btn.not{background:var(--alert);color:#fff;box-shadow:0 8px 18px -10px var(--alert-deep)}
+  .btn:disabled{opacity:.45;pointer-events:none}
+  .nav{display:flex;justify-content:space-between;margin-top:6px}
+  .ghost{font-size:14.5px;font-weight:600;padding:10px 12px;border-radius:10px;color:var(--slate)}
+  .ghost:disabled{opacity:.35}
+  .kbd{display:none}
+  @media (hover:hover) and (min-width:700px){ .kbd{display:inline;opacity:.7;font-weight:500;font-size:12px;margin-left:4px} }
+
+  /* states */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:28px 22px;text-align:center}
+  .panel h2{font-size:20px;font-weight:800;margin-bottom:8px}
+  .panel p{color:var(--slate);line-height:1.5;font-size:15px}
+  .panel .btn{margin:18px auto 0;max-width:260px;padding:0 24px;background:var(--ink);color:#fff}
+  .skeleton{height:340px;border-radius:var(--radius-lg);background:linear-gradient(100deg,var(--line) 30%,rgba(255,255,255,.5) 50%,var(--line) 70%);background-size:300% 100%;animation:shimmer 1.3s infinite linear}
+  @keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+
+  .toast{
+    position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translate(-50%,20px);
+    background:var(--ink);color:#fff;padding:11px 18px;border-radius:99px;font-size:14.5px;font-weight:600;
+    opacity:0;pointer-events:none;transition:.25s;max-width:92vw;text-align:center;z-index:10;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.ok{background:var(--dial-deep)} .toast.no{background:var(--alert-deep)}
+
+  .name{font-size:clamp(28px,8vw,40px);padding:14px 4px 2px}
+  .facts{margin:12px 0 4px;border-top:1px solid rgba(255,255,255,.12);text-align:left}
+  .fact{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid rgba(255,255,255,.12);min-height:46px}
+  .fact dt{font-size:12.5px;color:#a9b8cc;flex:none}
+  .fact dd{font-size:17px;font-weight:600;text-align:right;min-width:0}
+  .fact dd.ur{font-family:var(--font-ur);direction:rtl;font-size:19px;line-height:2.1}
+  .fact dd.num{font-variant-numeric:tabular-nums;letter-spacing:.03em;direction:ltr}
+  .phone{margin-top:16px}
+  .u-ur{font-family:var(--font-ur);direction:rtl;font-size:14px}
+  .top-actions{display:flex;align-items:center;gap:8px}
+  .sms-btn{display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 16px;border-radius:99px;background:var(--ink);color:#fff;font-weight:800;font-size:14.5px;text-decoration:none;transition:transform .12s}
+  .sms-btn:active{transform:scale(.96)}
+  .sms-btn svg{width:18px;height:18px}
+  @media (prefers-color-scheme:dark){ .sms-btn{background:var(--ink-2);border:1px solid var(--line)} }
+
+  .decide[hidden],.ghost[hidden]{display:none}
+  .nav.solo{justify-content:center}
+
+  /* caller picker */
+  .who-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+  .who-btn{height:68px;border-radius:var(--radius-md);background:var(--ink-2);color:#fff;font-weight:800;font-size:19px;border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 22px -14px rgba(15,26,43,.9);transition:transform .12s}
+  .who-btn:active{transform:scale(.97)}
+  .who-btn:last-child:nth-child(odd){grid-column:1/-1}
+
+  /* performance sheet */
+  .scrim{position:fixed;inset:0;z-index:20;background:rgba(5,10,20,.55);display:flex;align-items:flex-end;justify-content:center}
+  .scrim[hidden]{display:none}
+  .sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--card);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:20px 18px max(22px,env(safe-area-inset-bottom));animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+  @keyframes rise{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
+  .sheet-head h2{font-size:20px;font-weight:800}
+  .sheet .stats{margin-bottom:6px}
+  .sheet .btn.primary{width:100%;margin-top:6px;background:var(--dial);color:#fff}
+  .sheet .muted{color:var(--slate);font-size:15px;line-height:1.5}
+  .pw{width:100%;height:56px;border-radius:var(--radius-md);border:1.5px solid var(--line);background:transparent;color:inherit;padding:0 16px;font:inherit;font-size:17px;margin-top:14px}
+  .pw-err{color:var(--alert);font-size:14px;margin:8px 0 6px;min-height:20px}
+  .prow{padding:14px 0;border-top:1px solid var(--line)}
+  .prow:first-of-type{margin-top:8px}
+  .prow-top{display:flex;justify-content:space-between;align-items:baseline}
+  .prow-top b{font-size:18px;font-weight:800}
+  .prow-top span{font-size:14px;color:var(--slate)}
+  .pbar{height:12px;border-radius:6px;background:var(--line);margin:10px 0 8px;overflow:hidden}
+  .pfill{height:100%;display:flex;gap:2px}
+  .pfill i{display:block;height:100%}
+  .pfill i.ok{background:var(--dial)} .pfill i.no{background:var(--alert)}
+  .pnums{display:flex;gap:16px;flex-wrap:wrap;font-size:13.5px;color:var(--slate)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Call Desk</h1>
+      <p id="sub">Loading contacts…</p>
+    </div>
+    <div class="top-actions">
+    <a class="sms-btn" href="smssender.html" aria-label="Open SMS sender">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Send SMS</span>
+    </a>
+    <button class="icon-btn" id="refresh" aria-label="Sync from Google Sheets" title="Sync from Google Sheets">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+    </div>
+  </header>
+
+  <section class="stats" id="stats" aria-label="Progress"></section>
+  <div class="progress" id="bar" aria-hidden="true"></div>
+  <div id="warn"></div>
+
+  <main id="view" aria-live="polite"><div class="skeleton"></div></main>
+  <div id="extras"></div>
+
+  <div class="dock" id="dock">
+    <div class="decide" id="decide" hidden>
+      <button class="btn informed" id="btn-informed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Informed <span class="kbd">(I)</span>
+      </button>
+      <button class="btn not" id="btn-not">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Not informed <span class="kbd">(N)</span>
+      </button>
+    </div>
+    <div class="nav solo" id="nav">
+      <button class="ghost" id="btn-back" hidden>Back</button>
+      <button class="ghost" id="btn-perf">Team performance</button>
+      <button class="ghost" id="btn-skip" hidden>Skip for now</button>
+    </div>
+  </div>
+</div>
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" id="sheet-body" role="dialog" aria-modal="true" aria-label="Team performance"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* =========================================================
+   CONFIG — change here only
+   ========================================================= */
+const CONFIG = {
+  // Sheet 1: contacts (First name | mobile No)
+  CONTACTS_SHEET_ID: '1CdNeGKXSnDazcjSvqOLelkI-c_AlJ_bTMWlcF9Y2LZ4',
+  CONTACTS_GID: '',                       // empty = first tab
+
+  // Sheet 2: Google Form responses (Timestamp | First Name | Mobile No. | Status | Caller)
+  LOG_SHEET_ID: '1jfwlhCgUiWEzyUV0RkjuhsGMlIcyiJ-XrNUHq3-jTXc',
+  LOG_GID: '64663386',
+
+  // Google Form
+  FORM_ID: '1FAIpQLSf6CG-5W25-PjVINgLCKr_sNxPDi0rGAl2RyGjOfxWnvPdkZA',
+  ENTRY_MAUZA:  '',                       // these sheets have no mauza / father / CNIC columns
+  ENTRY_NAME:   'entry.117392066',
+  ENTRY_FATHER: '',
+  ENTRY_CNIC:   '',
+  ENTRY_PHONE:  'entry.398064454',
+  ENTRY_STATUS: 'entry.1206811993',
+  ENTRY_CALLER: 'entry.1170457518',
+
+  // Exact answer text the form accepts for the Status question
+  STATUS_INFORMED: 'Informed',
+  STATUS_NOT:      'Not informed',
+
+  // Callers shown on the first screen (must match the form's Caller answers exactly)
+  CALLERS: ['Shahid','Ashruf','Asim','Rashid','Umar'],
+
+  // Password for the Team performance screen (visible to anyone who views the page source)
+  PERF_PASSWORD: 'Admin123',
+
+  COUNTRY_CODE: '92'
+};
+
+/* ==== CORE:START (pure logic, no DOM) ==== */
+function parseCSV(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    } else if(c==='"'){ q=true; }
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      row.push(cur); cur=''; rows.push(row); row=[];
+    } else cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+function normName(s){
+  return String(s||'')
+    .replace(/[\u200b-\u200f\u202a-\u202e\u0640]/g,'')   // zero-width, bidi marks, tatweel
+    .replace(/\u064A/g,'\u06CC').replace(/\u0649/g,'\u06CC') // ي ى -> ی
+    .replace(/\u0643/g,'\u06A9')                              // ك -> ک
+    .replace(/\s+/g,' ').trim();
+}
+function normMobile(v){
+  let d=String(v==null?'':v).replace(/\D/g,'');
+  if(d.startsWith('0092')) d=d.slice(4);
+  else if(d.startsWith('92') && d.length===12) d=d.slice(2);
+  if(d.startsWith('0')) d=d.slice(1);
+  return d;
+}
+const isValidMobile = d => /^3\d{9}$/.test(d);
+
+function classify(status){
+  const t=String(status||'').toLowerCase().trim();
+  if(!t) return 'other';
+  if(/\bsms\b/.test(t)) return 'sms';          // rows written by the SMS sender are not calls
+  if(/\bnot\b|\bno\b|نہیں|نہ/.test(t)) return 'not';
+  if(/inform/.test(t)) return 'informed';
+  return 'other';
+}
+
+function colIndex(header, regex, fallback){
+  const i = header.findIndex(h => regex.test(String(h)));
+  return i>=0 ? i : fallback;
+}
+
+/* ---------- identity helpers ---------- */
+const digitsOnly = v => String(v==null?'':v).replace(/\D/g,'');
+/* A usable CNIC has 13 digits. A long run of zeros at the end means the value was rounded (3.84E+12). */
+const cnicOK = d => /^\d{13}$/.test(d) && !/0{6}$/.test(d);
+const str = v => String(v==null?'':v).trim();
+function personKey(p){
+  const c=digitsOnly(p.cnic);
+  if(cnicOK(c)) return 'c'+c;
+  return 'n'+normName(p.name)+'|'+normName(p.father)+'|'+normMobile(p.phone);
+}
+const nameKey = p => normName(p.name)+'|'+normName(p.father);
+
+/* gviz JSON keeps exact numbers; the CSV export turns a CNIC into 3.84E+12 */
+function parseGviz(text){
+  const a=text.indexOf('('), b=text.lastIndexOf(')');
+  if(a<0||b<a) throw new Error('Unexpected reply from Google Sheets');
+  const j=JSON.parse(text.slice(a+1,b));
+  if(j.status==='error') throw new Error((j.errors&&j.errors[0]&&(j.errors[0].detailed_message||j.errors[0].message))||'Sheet query failed');
+  const t=j.table||{cols:[],rows:[]};
+  const head=(t.cols||[]).map(c=>c.label||'');
+  const body=(t.rows||[]).map(r=>(r.c||[]).map(cell=>(cell==null||cell.v==null)?'':cell.v));
+  return [head,...body];
+}
+
+/* column lookup: by header text, falling back to the expected position */
+function resolveCols(h, spec, hasHeader){
+  const out={};
+  for(const k in spec){
+    const [re,fb]=spec[k];
+    const i=hasHeader?h.findIndex(x=>re.test(String(x))):-1;
+    out[k]=i>=0?i:fb;
+  }
+  return out;
+}
+const SPEC1={ mauza:[/(?!)/,-1], name:[/^\s*(first\s*)?name\s*$/i,0], father:[/(?!)/,-1], cnic:[/(?!)/,-1], phone:[/mobile|phone/i,1] };
+const SPEC2={ mauza:[/(?!)/,-1], name:[/^\s*(first\s*)?name\s*$/i,1], father:[/(?!)/,-1], cnic:[/(?!)/,-1], phone:[/mobile|phone/i,2], status:[/status/i,3], caller:[/caller|called/i,4] };
+const looksLikeHeader = h => { const t=h.join(' '); return /name|cnic|phone|mobile|mauza|status|caller|timestamp/i.test(t) && !/\d{6,}/.test(t); };
+
+/* Sheet 1 -> unique contacts */
+function buildContacts(rows){
+  const h=rows[0]||[];
+  const hasHeader=looksLikeHeader(h);
+  const c=resolveCols(h,SPEC1,hasHeader);
+  const start=hasHeader?1:0;
+  const seen=new Set(); const contacts=[];
+  let dupes=0, invalid=0, blank=0, weakKeys=0;
+  for(let r=start;r<rows.length;r++){
+    const row=rows[r];
+    const p={ mauza:str(row[c.mauza]), name:str(row[c.name]), father:str(row[c.father]), cnic:digitsOnly(row[c.cnic]), phone:str(row[c.phone]) };
+    if(!p.name && !p.cnic && !normMobile(p.phone)){ blank++; continue; }
+    const key=personKey(p);
+    if(seen.has(key)){ dupes++; continue; }
+    seen.add(key);
+    if(key[0]==='n') weakKeys++;
+    const mobile=normMobile(p.phone);
+    const valid=isValidMobile(mobile);
+    if(!valid) invalid++;
+    contacts.push({ ...p, mobile, valid, phoneRaw:p.phone, key, sheetRow:r+1 });
+  }
+  return { contacts, dupes, invalid, blank, weakKeys };
+}
+
+/* Sheet 2 -> ordered log entries */
+function canonicalCaller(v, callers){
+  const t=String(v||'').trim();
+  const hit=(callers||[]).find(c=>c.toLowerCase()===t.toLowerCase());
+  return hit||t;
+}
+function buildLog(rows, callers){
+  callers=callers||[];
+  const h=rows[0]||[];
+  const hasHeader=looksLikeHeader(h);
+  const c=resolveCols(h,SPEC2,hasHeader);
+  const start=hasHeader?1:0;
+  let iCaller=hasHeader && h.findIndex(x=>SPEC2.caller[0].test(String(x)))>=0 ? c.caller : -1;
+  if(iCaller<0 && callers.length){          // header not recognised: find the column full of caller names
+    const set=new Set(callers.map(x=>x.toLowerCase()));
+    const body=rows.slice(start);
+    const width=Math.max(0,...body.map(r=>r.length));
+    let best=-1,bestN=0;
+    for(let k=0;k<width;k++){
+      if(k===c.name||k===c.father||k===c.mauza) continue;
+      let n=0; for(const r of body) if(set.has(String(r[k]||'').trim().toLowerCase())) n++;
+      if(n>bestN){bestN=n;best=k;}
+    }
+    iCaller=best;
+  }
+  const log=[];
+  for(let r=start;r<rows.length;r++){
+    const row=rows[r];
+    const p={ mauza:str(row[c.mauza]), name:str(row[c.name]), father:str(row[c.father]), cnic:digitsOnly(row[c.cnic]), phone:str(row[c.phone]) };
+    if(!p.name && !p.cnic && !normMobile(p.phone)) continue;
+    log.push({
+      ...p, mobile:normMobile(p.phone), key:personKey(p),
+      status:classify(row[c.status]), rawStatus:row[c.status],
+      caller: iCaller>=0 ? canonicalCaller(row[iCaller],callers) : ''
+    });
+  }
+  return log;
+}
+
+function performanceByCaller(log, callers){
+  const map=new Map();
+  const blank=c=>({caller:c,informed:0,not:0,other:0,sms:0,total:0});
+  (callers||[]).forEach(c=>map.set(c,blank(c)));
+  for(const e of log){
+    const k=e.caller||'Unassigned';
+    if(!map.has(k)) map.set(k,blank(k));
+    const r=map.get(k);
+    if(e.status==='sms'){ r.sms++; continue; }
+    r.total++;
+    if(e.status==='informed') r.informed++; else if(e.status==='not') r.not++; else r.other++;
+  }
+  const rows=[...map.values()].filter(r=>r.total>0 || r.sms>0 || (callers||[]).includes(r.caller));
+  rows.sort((a,b)=>b.total-a.total || b.sms-a.sms);
+  const totals=rows.reduce((t,r)=>({total:t.total+r.total,informed:t.informed+r.informed,not:t.not+r.not,sms:t.sms+r.sms}),{total:0,informed:0,not:0,sms:0});
+  return {rows,totals};
+}
+
+function latestStatusMap(log){
+  const m=new Map();
+  for(const e of log) if(e.status!=='sms') m.set(e.key,e.status);
+  return m;
+}
+function countMap(log){
+  const m=new Map();
+  for(const e of log){ const k=e.key+'|'+e.status; m.set(k,(m.get(k)||0)+1); }
+  return m;
+}
+
+/* Where do we resume? index of the NEXT contact to show */
+function findResume(contacts, log){
+  log=log.filter(e=>e.status!=='sms');           // resume after the last CALL, not the last SMS
+  if(!log.length) return { index:0, found:true, last:null };
+  const last=log[log.length-1];
+  let idx=-1;
+  for(let i=contacts.length-1;i>=0;i--){ if(contacts[i].key===last.key){ idx=i; break; } }
+  if(idx<0){
+    const nk=nameKey(last);
+    for(let i=contacts.length-1;i>=0;i--){ if(nameKey(contacts[i])===nk){ idx=i; break; } }
+  }
+  if(idx<0) return { index:0, found:false, last };
+  return { index:idx+1, found:true, last };
+}
+/* ==== CORE:END ==== */
+
+/* =========================================================
+   App
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+const state = {
+  status:'loading',          // loading | ready | error
+  contacts:[], index:0,
+  caller:null,               // chosen on first screen, kept in memory only (cleared on reload)
+  unlocked:false,            // performance password accepted (memory only)
+  statusMap:new Map(),       // key -> informed|not|other (latest in sheet 2)
+  logCounts:new Map(),       // key|status -> count in sheet 2
+  notes:[], warnings:[], lockUntil:0, dir:'fwd', syncedAt:null, error:''
+};
+
+const sheetUrl = (id,gid,fmt) =>
+  `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:${fmt}&headers=1${gid?`&gid=${gid}`:''}&_=${Date.now()}`;
+
+async function getText(url){
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error(`Sheet request failed (${res.status})`);
+  const text = await res.text();
+  if(/^\s*<(!doctype|html)/i.test(text)) throw new Error('Sheet is not shared for viewing (needs "Anyone with the link: Viewer")');
+  return text;
+}
+/* JSON keeps exact numbers (a 13-digit CNIC stays 3840112345678). CSV is only the fallback. */
+async function fetchRows(id,gid){
+  try{ return parseGviz(await getText(sheetUrl(id,gid,'json'))); }
+  catch(e){
+    if(/not shared/.test(e.message)) throw e;
+    return parseCSV(await getText(sheetUrl(id,gid,'csv')));
+  }
+}
+const fetchLog = async () => buildLog(await fetchRows(CONFIG.LOG_SHEET_ID, CONFIG.LOG_GID), CONFIG.CALLERS);
+
+async function load(){
+  state.status='loading'; render();
+  $('#refresh').classList.add('spin');
+  try{
+    const [cRows, log] = await Promise.all([
+      fetchRows(CONFIG.CONTACTS_SHEET_ID, CONFIG.CONTACTS_GID),
+      fetchLog()
+    ]);
+    const built = buildContacts(cRows);
+    state.contacts = built.contacts;
+    state.statusMap = latestStatusMap(log);
+    state.logCounts = countMap(log);
+    const resume = findResume(built.contacts, log);
+    state.index = resume.index;
+    state.dir='fwd';
+    state.notes = [];
+    if(built.dupes)  state.notes.push(`${built.dupes} repeated rows in Sheet 1 (same name and number) were skipped, so each person appears once.`);
+    if(built.invalid)state.notes.push(`${built.invalid} number${built.invalid>1?'s':''} in Sheet 1 look invalid. Those contacts can't be called.`);
+    if(!resume.found)state.notes.push(`The last logged person (${resume.last.name}) was not found in Sheet 1, so the list starts from the top.`);
+    state.syncedAt = new Date();
+    state.status='ready';
+  }catch(err){
+    state.status='error'; state.error=err.message||String(err);
+  }
+  $('#refresh').classList.remove('spin');
+  render();
+}
+
+/* ---------- formatting ---------- */
+function prettyPhone(c){
+  return c.valid ? `0${c.mobile.slice(0,3)} ${c.mobile.slice(3)}` : c.mobile || '—';
+}
+function prettyCnic(d){
+  return /^\d{13}$/.test(d) ? `${d.slice(0,5)}-${d.slice(5,12)}-${d.slice(12)}` : (d || '—');
+}
+function intlPhone(c){
+  return c.valid ? `+${CONFIG.COUNTRY_CODE} ${c.mobile.slice(0,3)} ${c.mobile.slice(3)}` : '';
+}
+const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.6 21 3 13.4 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg>';
+
+/* ---------- render ---------- */
+function setDock(contactMode){
+  $('#decide').hidden=!contactMode;
+  $('#btn-back').hidden=!contactMode;
+  $('#btn-skip').hidden=!contactMode;
+  $('#nav').classList.toggle('solo',!contactMode);
+}
+
+function render(){
+  renderStats(); renderWarn();
+  const view=$('#view'), extras=$('#extras');
+  extras.innerHTML=''; setDock(false);
+
+  if(state.status==='error'){
+    $('#sub').textContent='Could not load';
+    view.innerHTML=`<div class="panel"><h2>Couldn't read the sheets</h2><p>${esc(state.error)}</p><p style="margin-top:8px">Check the internet connection, and that both sheets are shared as "Anyone with the link can view".</p><button class="btn" id="retry">Try again</button></div>`;
+    $('#retry').onclick=load; return;
+  }
+
+  // Nobody is shown until a caller has been chosen
+  if(!state.caller){
+    $('#sub').textContent = state.status==='loading' ? 'Syncing with Google Sheets…' : 'Choose your name to begin';
+    view.innerHTML=`<div class="panel who"><h2>Who is calling?</h2><p>Pick your name to start. It is saved with every entry until this page is reloaded.</p><div class="who-grid">${
+      CONFIG.CALLERS.map(n=>`<button class="who-btn" data-caller="${esc(n)}">${esc(n)}</button>`).join('')
+    }</div></div>`;
+    view.querySelectorAll('.who-btn').forEach(b=>b.onclick=()=>{ state.caller=b.dataset.caller; state.dir='fwd'; $('.sms-btn').href='smssender.html?caller='+encodeURIComponent(state.caller); render(); });
+    return;
+  }
+
+  if(state.status==='loading'){
+    $('#sub').textContent=`Calling as ${state.caller}`;
+    view.innerHTML='<div class="skeleton"></div>'; return;
+  }
+
+  const total=state.contacts.length;
+  $('#sub').textContent = `Calling as ${state.caller}, ${total} people on the list`;
+
+  if(!total){
+    view.innerHTML='<div class="panel"><h2>Sheet 1 is empty</h2><p>Add names and mobile numbers to Sheet 1, then sync.</p></div>'; return;
+  }
+  if(state.index>=total){
+    view.innerHTML=`<div class="panel"><h2>Everyone on the list has been reached</h2><p>You have gone through all ${total} people. New rows added to Sheet 1 will appear after you sync.</p><button class="btn" id="back-last">Go back one</button></div>`;
+    $('#back-last').onclick=()=>go(-1);
+    renderNotes(); return;
+  }
+
+  const c=state.contacts[state.index];
+  const prev=state.statusMap.get(c.key);
+  const badge = prev==='informed' ? '<span class="badge ok">Already informed</span>'
+              : prev==='not'      ? '<span class="badge no">Last time: not informed</span>' : '';
+  view.innerHTML=`
+    <article class="call-card enter ${state.dir==='back'?'back':''}">
+      <div class="meta"><span>Contact ${state.index+1} of ${total}</span>${badge}</div>
+      <div class="name" lang="ur" dir="rtl">${esc(c.name)}</div>
+      ${(c.father||c.mauza||c.cnic)?`<dl class="facts">
+        <div class="fact"><dt>Father / spouse</dt><dd class="ur" lang="ur">${esc(c.father||'—')}</dd></div>
+        <div class="fact"><dt>Mauza</dt><dd class="ur" lang="ur">${esc(c.mauza||'—')}</dd></div>
+        <div class="fact"><dt>CNIC</dt><dd class="num">${esc(prettyCnic(c.cnic))}</dd></div>
+      </dl>`:''}
+      <div class="phone">${esc(prettyPhone(c))}</div>
+      ${c.valid?`<div class="phone-sub">${esc(intlPhone(c))}</div>`:''}
+      ${c.valid?'':`<div class="invalid">This number doesn't look like a Pakistani mobile (10 digits starting with 3). Mark it as not informed, or fix it in Sheet 1.</div>`}
+      <a class="call-btn" id="call" ${c.valid?`href="tel:+${CONFIG.COUNTRY_CODE}${c.mobile}"`:'aria-disabled="true"'}>
+        ${ICON_PHONE}<span>${c.valid?'Call now':'Number invalid'}</span>
+      </a>
+    </article>`;
+
+  const nxt=state.contacts.slice(state.index+1,state.index+4);
+  if(nxt.length){
+    extras.innerHTML=`<section class="upnext"><h2>Coming up</h2><ul>${nxt.map(n=>
+      `<li><span class="u-name" lang="ur" dir="rtl">${esc(n.name)}</span><span class="u-num u-ur" lang="ur">${esc(n.mauza||prettyPhone(n))}</span></li>`).join('')}</ul></section>`;
+  }
+  renderNotes();
+
+  setDock(true);
+  $('#btn-back').disabled = state.index===0;
+}
+
+function renderNotes(){
+  const t = state.syncedAt ? `Synced at ${state.syncedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.` : '';
+  const items=[...state.notes, t].filter(Boolean);
+  if(items.length) $('#extras').insertAdjacentHTML('beforeend',`<div class="notes">${items.map(esc).join('<br>')}</div>`);
+}
+
+function renderStats(){
+  const el=$('#stats'), bar=$('#bar');
+  if(state.status!=='ready' || !state.contacts.length){ el.innerHTML=''; bar.innerHTML=''; return; }
+  let ok=0,no=0;
+  for(const c of state.contacts){ const s=state.statusMap.get(c.key); if(s==='informed')ok++; else if(s==='not')no++; }
+  const left=state.contacts.length-ok-no;
+  el.innerHTML=`
+    <div class="chip ok"><b>${ok}</b><span>Informed</span></div>
+    <div class="chip no"><b>${no}</b><span>Not informed</span></div>
+    <div class="chip"><b>${left}</b><span>Not yet called</span></div>`;
+  const total=state.contacts.length, segs=Math.min(total,40);
+  let html='';
+  for(let s=0;s<segs;s++){
+    const from=Math.floor(s*total/segs), to=Math.floor((s+1)*total/segs);
+    let cls='';
+    if(state.caller && state.index>=from && state.index<to) cls='now';
+    else {
+      let a=0,b=0,n=0;
+      for(let i=from;i<to;i++){ n++; const st=state.statusMap.get(state.contacts[i].key); if(st==='informed')a++; else if(st==='not')b++; }
+      if(a+b===n && n) cls = a>=b?'ok':'no';
+    }
+    html+=`<i class="${cls}"></i>`;
+  }
+  bar.innerHTML=html;
+}
+
+function renderWarn(){
+  const el=$('#warn');
+  const w=state.warnings[state.warnings.length-1];
+  if(!w){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="warn" role="alert"><p><b>Not confirmed in the sheet:</b> ${esc(w.contact.name)}. ${esc(w.reason)}</p><button id="w-retry">Send again</button><button id="w-x" aria-label="Dismiss">Dismiss</button></div>`;
+  $('#w-retry').onclick=()=>{ state.warnings.pop(); renderWarn(); send(w.contact,w.statusKey,w.caller); };
+  $('#w-x').onclick=()=>{ state.warnings.pop(); renderWarn(); };
+}
+
+/* ---------- actions ---------- */
+let toastTimer;
+function toast(msg,kind=''){
+  const t=$('#toast'); t.textContent=msg; t.className='toast show '+kind;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function go(delta){
+  if(!state.caller) return;
+  const n=state.index+delta;
+  if(n<0||n>state.contacts.length) return;
+  state.index=n; state.dir=delta<0?'back':'fwd'; render();
+}
+
+function mark(statusKey){
+  if(state.status!=='ready' || !state.caller) return;
+  const c=state.contacts[state.index]; if(!c) return;
+  if(performance.now()<state.lockUntil) return;       // guards against double taps
+  state.lockUntil=performance.now()+500;
+  navigator.vibrate && navigator.vibrate(15);
+  state.statusMap.set(c.key,statusKey);               // optimistic
+  state.index++; state.dir='fwd';
+  render();
+  toast(statusKey==='informed' ? 'Saved as informed' : 'Saved as not informed', statusKey==='informed'?'ok':'no');
+  send(c,statusKey,state.caller);
+}
+
+async function send(contact,statusKey,caller){
+  const statusText = statusKey==='informed' ? CONFIG.STATUS_INFORMED : CONFIG.STATUS_NOT;
+  const k = contact.key+'|'+statusKey;
+  const before = state.logCounts.get(k)||0;
+  const body = new URLSearchParams();
+  if(CONFIG.ENTRY_MAUZA)  body.set(CONFIG.ENTRY_MAUZA, contact.mauza);
+  body.set(CONFIG.ENTRY_NAME, contact.name);
+  if(CONFIG.ENTRY_FATHER) body.set(CONFIG.ENTRY_FATHER, contact.father);
+  if(CONFIG.ENTRY_CNIC)   body.set(CONFIG.ENTRY_CNIC, contact.cnic);
+  body.set(CONFIG.ENTRY_PHONE, contact.mobile);       // digits exactly as in Sheet 1, e.g. 3066072121
+  body.set(CONFIG.ENTRY_CALLER, caller);
+  body.set(CONFIG.ENTRY_STATUS, statusText);
+  body.set('fvv','1'); body.set('pageHistory','0');
+  try{
+    await fetch(`https://docs.google.com/forms/d/e/${CONFIG.FORM_ID}/formResponse`, {
+      method:'POST', mode:'no-cors', credentials:'include',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body
+    });
+  }catch(e){
+    return fail(contact,statusKey,caller,'The form could not be reached. Check the connection and send again.');
+  }
+  // The form gives no readable reply, so confirm by looking for the new row in Sheet 2.
+  for(const wait of [1500,2500,4000]){
+    await sleep(wait);
+    try{
+      const log=await fetchLog();
+      state.logCounts=countMap(log);
+      if((state.logCounts.get(k)||0)>before) return;
+    }catch(_){}
+  }
+  fail(contact,statusKey,caller,`The row didn't show up in Sheet 2. Check that the form's answers match exactly: "${CONFIG.STATUS_INFORMED}", "${CONFIG.STATUS_NOT}" and the caller name "${caller}".`);
+}
+function fail(contact,statusKey,caller,reason){
+  state.warnings.push({contact,statusKey,caller,reason});
+  renderWarn();
+}
+
+/* ---------- team performance (password protected) ---------- */
+const perfHead = (extra='') =>
+  `<div class="sheet-head"><h2>Team performance</h2><div>${extra}<button class="ghost" data-close>Close</button></div></div>`;
+const bindClose = () => document.querySelectorAll('[data-close]').forEach(x=>x.onclick=closePerf);
+
+function openPerf(){
+  $('#scrim').hidden=false;
+  state.unlocked ? showPerf() : showPw();
+}
+function closePerf(){ $('#scrim').hidden=true; }
+
+function showPw(){
+  $('#sheet-body').innerHTML = perfHead() +
+    `<p class="muted">Enter the admin password to see each caller's numbers.</p>
+     <input class="pw" id="pw" type="password" autocomplete="off" placeholder="Password" enterkeyhint="go" aria-label="Admin password">
+     <div class="pw-err" id="pw-err" role="alert"></div>
+     <button class="btn primary" id="pw-go">Open</button>`;
+  const tryOpen=()=>{
+    if($('#pw').value===CONFIG.PERF_PASSWORD){ state.unlocked=true; showPerf(); }
+    else { $('#pw-err').textContent='Wrong password. Try again.'; $('#pw').select(); }
+  };
+  $('#pw-go').onclick=tryOpen;
+  $('#pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryOpen(); });
+  bindClose();
+  setTimeout(()=>$('#pw').focus(),60);
+}
+
+async function showPerf(){
+  const body=$('#sheet-body');
+  body.innerHTML = perfHead() + '<div class="skeleton" style="height:240px"></div>';
+  bindClose();
+  try{
+    const log=await fetchLog();
+    state.logCounts=countMap(log);
+    const {rows,totals}=performanceByCaller(log,CONFIG.CALLERS);
+    const max=Math.max(1,...rows.map(r=>r.total));
+    const pct=(a,t)=>t?Math.round(a/t*100):0;
+    body.innerHTML = perfHead('<button class="ghost" id="perf-refresh">Refresh</button>') + (totals.total+totals.sms===0
+      ? '<p class="muted">No entries have been logged yet.</p>'
+      : `<div class="stats">
+           <div class="chip"><b>${totals.total}</b><span>Calls logged</span></div>
+           <div class="chip ok"><b>${totals.informed}</b><span>Informed</span></div>
+           <div class="chip no"><b>${totals.not}</b><span>Not informed</span></div>
+         </div>` + (totals.sms ? `<p class="muted" style="margin:6px 0 4px">SMS sent: <b>${totals.sms}</b></p>` : '') + rows.map(r=>`
+         <div class="prow">
+           <div class="prow-top"><b>${esc(r.caller)}</b><span>${r.total} ${r.total===1?'call':'calls'}</span></div>
+           <div class="pbar"><div class="pfill" style="width:${(r.total/max*100).toFixed(1)}%">
+             <i class="ok" style="flex:${r.informed}"></i><i class="no" style="flex:${r.not}"></i>
+           </div></div>
+           <div class="pnums"><span>Informed ${r.informed}</span><span>Not informed ${r.not}</span><span>${pct(r.informed,r.total)}% informed</span>${r.sms?`<span>SMS ${r.sms}</span>`:''}</div>
+         </div>`).join(''));
+    bindClose();
+    const rf=$('#perf-refresh'); if(rf) rf.onclick=showPerf;
+  }catch(err){
+    body.innerHTML = perfHead() + `<p class="muted">Could not read Sheet 2: ${esc(err.message||err)}</p><button class="btn primary" id="perf-retry">Try again</button>`;
+    bindClose(); $('#perf-retry').onclick=showPerf;
+  }
+}
+
+/* ---------- wiring ---------- */
+$('#btn-informed').onclick=()=>mark('informed');
+$('#btn-not').onclick=()=>mark('not');
+$('#btn-back').onclick=()=>go(-1);
+$('#btn-skip').onclick=()=>go(1);
+$('#btn-perf').onclick=openPerf;
+$('#refresh').onclick=load;
+$('#scrim').addEventListener('click',e=>{ if(e.target.id==='scrim') closePerf(); });
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.key==='Escape'){ closePerf(); return; }
+  if(!$('#scrim').hidden) return;
+  if(e.target.closest && e.target.closest('input,textarea,select')) return;
+  if(!state.caller || state.status!=='ready') return;
+  const k=e.key.toLowerCase();
+  if(k==='i') mark('informed'); else if(k==='n') mark('not');
+  else if(k==='s') go(1); else if(k==='b') go(-1);
+});
+
+load();
+</script>
+</body>
+</html>
