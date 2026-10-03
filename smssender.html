@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1a2b">
+<title>SMS Sender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600&family=Schibsted+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0f1a2b; --ink-2:#1a2940; --mist:#e9eef3; --card:#ffffff;
+    --slate:#5b6b7f; --line:#d5dde6; --dial:#0e8f5e; --dial-deep:#0a6b46;
+    --alert:#c2253b; --amber:#b7791f;
+    --radius-lg:24px; --radius-md:16px; --radius-sm:12px;
+    --font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --font-ur:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq','Alvi Nastaleeq','Noto Naskh Arabic','Segoe UI',serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --mist:#0a121e; --card:#14202f; --line:#243449; --slate:#94a3b8; }
+    body{color:#e8eef6}
+    input,textarea,select{color:#e8eef6}
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font-ui);background:var(--mist);color:var(--ink);min-height:100dvh;-webkit-tap-highlight-color:transparent}
+  button,input,textarea,select{font:inherit}
+  button{border:0;background:none;cursor:pointer;color:inherit}
+  :focus-visible{outline:3px solid #3b82f6;outline-offset:2px;border-radius:10px}
+  [hidden]{display:none!important}
+
+  .app{max-width:560px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px 40px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 2px 16px}
+  .brand h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .brand p{font-size:13px;color:var(--slate);margin-top:2px}
+  .pill{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 16px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-weight:700;font-size:14.5px;text-decoration:none;color:inherit}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px 18px;margin-bottom:14px}
+  .card h2{font-size:17px;font-weight:800;margin-bottom:14px}
+  .card h2 small{font-weight:600;color:var(--slate);font-size:13px;margin-left:6px}
+  label{display:block;font-size:13.5px;font-weight:700;color:var(--slate);margin-bottom:12px}
+  input,textarea,select{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);background:transparent;border-radius:var(--radius-sm);padding:0 14px;height:52px;font-size:17px;font-weight:500;color:var(--ink)}
+  textarea{height:auto;min-height:150px;padding:12px 14px;line-height:1.7;resize:vertical}
+  .pwrow{position:relative}
+  .pwrow input{padding-right:78px}
+  .pwrow button{position:absolute;right:6px;top:12px;height:40px;padding:0 12px;font-size:14px;font-weight:700;color:var(--slate)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .check{display:flex;align-items:center;gap:10px;font-weight:600;color:inherit;font-size:14.5px;margin:2px 0 4px}
+  .check input{width:22px;height:22px;margin:0;flex:none}
+
+  .btn{width:100%;height:56px;border-radius:var(--radius-md);font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,opacity .12s}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.45;pointer-events:none}
+  .btn.primary{background:var(--ink);color:#fff}
+  .btn.go{background:var(--dial);color:#fff;box-shadow:0 10px 20px -12px var(--dial-deep)}
+  .btn.stop{background:var(--alert);color:#fff}
+  .btn.plain{background:transparent;border:1.5px solid var(--line)}
+  .row-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .ghost{font-size:14px;font-weight:700;color:var(--slate);padding:8px 4px}
+
+  .msg{font-size:14px;line-height:1.5;margin-top:10px;color:var(--alert);min-height:0}
+  .msg.ok{color:var(--dial)}
+  .hint{font-size:13px;color:var(--slate);margin-top:8px;line-height:1.5}
+  .device{margin-top:4px}
+  .device .who{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+  .device .who b{font-size:15px}
+  .device .who span{font-size:13px;color:var(--slate)}
+
+  .plan{font-size:14.5px;line-height:1.6;background:var(--mist);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px}
+  .plan b{font-variant-numeric:tabular-nums}
+  .plan.err{color:var(--alert)}
+  .preview{margin-top:12px;border:1.5px dashed var(--line);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;line-height:1.9;white-space:pre-wrap;word-break:break-word}
+  .preview small{display:block;font-size:12.5px;color:var(--slate);margin-bottom:4px}
+
+  .bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:14px 0 10px}
+  .bar i{display:block;height:100%;width:0;background:var(--dial);transition:width .3s}
+  .counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .counts div{background:var(--mist);border-radius:var(--radius-sm);padding:9px 12px}
+  .counts b{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+  .counts span{font-size:12.5px;color:var(--slate)}
+  .counts .ok b{color:var(--dial)} .counts .bad b{color:var(--alert)}
+  .status{font-size:14.5px;font-weight:700;margin-bottom:8px;min-height:22px}
+  .log{list-style:none;max-height:240px;overflow:auto;font-size:13.5px;border-top:1px solid var(--line)}
+  .log li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .log li span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .log .s-sent{color:var(--dial);font-weight:700} .log .s-fail{color:var(--alert);font-weight:700}
+  .ur{font-family:var(--font-ur);font-size:15px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>SMS Sender</h1><p id="sub">Loading contacts…</p></div>
+    <a class="pill" href="index.html">Call Desk</a>
+  </header>
+
+  <!-- 1. login -->
+  <section class="card" id="c-login">
+    <h2>1. Connect to SMS Gateway</h2>
+    <div id="login-form">
+      <label>Username
+        <input id="user" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+      </label>
+      <label>Password
+        <div class="pwrow">
+          <input id="pass" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="go">
+          <button type="button" id="showpw">Show</button>
+        </div>
+      </label>
+      <button class="btn primary" id="connect">Connect</button>
+      <div class="msg" id="login-msg" role="alert"></div>
+      <p class="hint">Use the username and password from the Home tab of the SMS Gateway app. They are kept in this page's memory only and are gone when you reload.</p>
+    </div>
+    <div class="device" id="device" hidden>
+      <div class="who"><div><b id="dev-name"></b><br><span id="dev-seen"></span></div><button class="ghost" id="disconnect">Disconnect</button></div>
+      <label id="dev-pick-wrap" hidden>Device<select id="dev-pick"></select></label>
+      <label>SIM to send from<select id="sim"></select></label>
+    </div>
+  </section>
+
+  <!-- 2. range -->
+  <section class="card" id="c-range" hidden>
+    <h2>2. Contacts <small>same numbering as Call Desk</small></h2>
+    <div class="two">
+      <label>From contact<input id="from" type="number" inputmode="numeric" min="1" value="1"></label>
+      <label>To contact<input id="to" type="number" inputmode="numeric" min="1" value="250"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="skipSent" checked> Skip numbers already sent from this browser</label>
+    <div class="plan" id="plan"></div>
+  </section>
+
+  <!-- 3. message -->
+  <section class="card" id="c-msg" hidden>
+    <h2>3. Message</h2>
+    <textarea id="text" dir="auto" placeholder="Type the SMS text. You can use {name}, {father} and {mauza} and they are filled in for each person."></textarea>
+    <div class="hint" id="count"></div>
+    <div class="preview" id="preview" hidden></div>
+  </section>
+
+  <!-- 4. send -->
+  <section class="card" id="c-send" hidden>
+    <h2>4. Send</h2>
+    <button class="btn go" id="start">Send messages</button>
+    <div id="run" hidden>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="counts">
+        <div class="ok"><b id="n-sent">0</b><span>Sent</span></div>
+        <div class="bad"><b id="n-fail">0</b><span>Failed</span></div>
+        <div><b id="n-left">0</b><span>Remaining</span></div>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+      <button class="btn stop" id="stop" hidden>Stop after this message</button>
+      <ul class="log" id="log"></ul>
+      <div class="row-btns">
+        <button class="btn plain" id="download" hidden>Download results</button>
+        <button class="btn plain" id="again" hidden>Prepare another run</button>
+      </div>
+    </div>
+    <p class="hint">Keep this page open and the screen on while sending. Limits: 150 messages per 15 minutes, 250 per hour, 250 per run. The page waits automatically when a limit is reached.</p>
+    <button class="ghost" id="clear-sent">Clear the sent history for this browser</button>
+  </section>
+</div>
+
+<script>
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const CONFIG = {
+  CONTACTS_SHEET_ID: '12ftH9eb_MCc2ncfDsOY-IaV4FGNi4gUw6w-kEKCzpBI',
+  CONTACTS_GID: '',                 // empty = first tab
+  API: '/api/sms',                  // Vercel function that forwards to api.sms-gate.app
+  COUNTRY_CODE: '92',
+  MAX_PER_RUN: 250,
+  MAX_15_MIN: 150,
+  MAX_1_HOUR: 250,
+  DELAY_MS: 1000,
+  MAX_CONSECUTIVE_FAILS: 5
+};
+
+/* ==== CORE:START (pure logic, no DOM) ==== */
+function parseCSV(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    } else if(c==='"'){ q=true; }
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      row.push(cur); cur=''; rows.push(row); row=[];
+    } else cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+function normName(s){
+  return String(s||'')
+    .replace(/[\u200b-\u200f\u202a-\u202e\u0640]/g,'')
+    .replace(/\u064A/g,'\u06CC').replace(/\u0649/g,'\u06CC')
+    .replace(/\u0643/g,'\u06A9')
+    .replace(/\s+/g,' ').trim();
+}
+function normMobile(v){
+  let d=String(v==null?'':v).replace(/\D/g,'');
+  if(d.startsWith('0092')) d=d.slice(4);
+  else if(d.startsWith('92') && d.length===12) d=d.slice(2);
+  if(d.startsWith('0')) d=d.slice(1);
+  return d;
+}
+const isValidMobile = d => /^3\d{9}$/.test(d);
+const digitsOnly = v => String(v==null?'':v).replace(/\D/g,'');
+const cnicOK = d => /^\d{13}$/.test(d) && !/0{6}$/.test(d);
+const str = v => String(v==null?'':v).trim();
+function personKey(p){
+  const c=digitsOnly(p.cnic);
+  if(cnicOK(c)) return 'c'+c;
+  return 'n'+normName(p.name)+'|'+normName(p.father)+'|'+normMobile(p.phone);
+}
+function parseGviz(text){
+  const a=text.indexOf('('), b=text.lastIndexOf(')');
+  if(a<0||b<a) throw new Error('Unexpected reply from Google Sheets');
+  const j=JSON.parse(text.slice(a+1,b));
+  if(j.status==='error') throw new Error((j.errors&&j.errors[0]&&(j.errors[0].detailed_message||j.errors[0].message))||'Sheet query failed');
+  const t=j.table||{cols:[],rows:[]};
+  const head=(t.cols||[]).map(c=>c.label||'');
+  const body=(t.rows||[]).map(r=>(r.c||[]).map(cell=>(cell==null||cell.v==null)?'':cell.v));
+  return [head,...body];
+}
+function resolveCols(h, spec, hasHeader){
+  const out={};
+  for(const k in spec){
+    const [re,fb]=spec[k];
+    const i=hasHeader?h.findIndex(x=>re.test(String(x))):-1;
+    out[k]=i>=0?i:fb;
+  }
+  return out;
+}
+const SPEC1={ mauza:[/mauza/i,0], name:[/^\s*(first\s*)?name\s*$/i,1], father:[/spouse|father/i,2], cnic:[/cnic/i,3], phone:[/phone|mobile/i,4] };
+const looksLikeHeader = h => { const t=h.join(' '); return /name|cnic|phone|mobile|mauza/i.test(t) && !/\d{6,}/.test(t); };
+
+/* same list, same order and same duplicate rules as Call Desk, so "contact 14" means the same person in both */
+function buildContacts(rows){
+  const h=rows[0]||[];
+  const hasHeader=looksLikeHeader(h);
+  const c=resolveCols(h,SPEC1,hasHeader);
+  const start=hasHeader?1:0;
+  const seen=new Set(); const contacts=[];
+  for(let r=start;r<rows.length;r++){
+    const row=rows[r];
+    const p={ mauza:str(row[c.mauza]), name:str(row[c.name]), father:str(row[c.father]), cnic:digitsOnly(row[c.cnic]), phone:str(row[c.phone]) };
+    if(!p.name && !p.cnic && !normMobile(p.phone)) continue;
+    const key=personKey(p);
+    if(seen.has(key)) continue;
+    seen.add(key);
+    const mobile=normMobile(p.phone);
+    contacts.push({ ...p, mobile, valid:isValidMobile(mobile), key });
+  }
+  return contacts;
+}
+
+function fillTemplate(tpl, c){
+  return String(tpl).replace(/\{(name|father|mauza)\}/gi,(_,k)=>c[k.toLowerCase()]||'');
+}
+/* rough SMS count: Unicode (Urdu) = 70 / 67 per part, plain English = 160 / 153 */
+function smsParts(text){
+  const len=[...text].length;
+  if(!len) return {len:0,parts:0,unicode:false};
+  const unicode=/[^\u0000-\u007f]/.test(text);
+  const single=unicode?70:160, multi=unicode?67:153;
+  return { len, unicode, parts: len<=single?1:Math.ceil(len/multi) };
+}
+/* seconds to wait before another send is allowed (log = epoch seconds of earlier sends) */
+function waitSeconds(log, now, max15, max60){
+  const within=win=>log.filter(t=>now-t<win).sort((a,b)=>a-b);
+  let wait=0;
+  const a=within(900);  if(a.length>=max15) wait=Math.max(wait,a[a.length-max15]+900-now);
+  const b=within(3600); if(b.length>=max60) wait=Math.max(wait,b[b.length-max60]+3600-now);
+  return Math.max(0,Math.ceil(wait));
+}
+function buildPlan(contacts, from, to, sentMap, skipSent, maxPerRun){
+  const total=contacts.length;
+  if(!Number.isInteger(from)||!Number.isInteger(to)||from<1||to<from) return { error:'Enter a valid range, for example 1 to 250.' };
+  if(from>total) return { error:`The list has only ${total} contacts.` };
+  const end=Math.min(to,total);
+  if(end-from+1>maxPerRun) return { error:`Maximum ${maxPerRun} messages per run. Choose a smaller range.` };
+  const items=[], seen=new Set();
+  const skipped={ sent:0, invalid:0, shared:0 };
+  for(let n=from;n<=end;n++){
+    const c=contacts[n-1];
+    if(!c.valid){ skipped.invalid++; continue; }
+    const phone='+92'+c.mobile;
+    if(skipSent && sentMap && sentMap[phone]){ skipped.sent++; continue; }
+    if(seen.has(phone)){ skipped.shared++; continue; }
+    seen.add(phone);
+    items.push({ n, c, phone });
+  }
+  return { items, from, end, skipped };
+}
+/* ==== CORE:END ==== */
+
+/* =========================================================
+   App
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(_){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(_){} }
+};
+
+const state = {
+  contacts:[], loaded:false,
+  creds:null, devices:[], device:null,
+  plan:null, running:false, stop:false, results:[]
+};
+let sentMap = store.get('sms.sent',{});     // phone -> {id,t}
+let sendLog = store.get('sms.log',[]);      // epoch seconds of recent sends (for the rate limits)
+
+/* ---------- contacts ---------- */
+async function getText(url){
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error(`Sheet request failed (${res.status})`);
+  const text = await res.text();
+  if(/^\s*<(!doctype|html)/i.test(text)) throw new Error('Sheet is not shared for viewing (needs "Anyone with the link: Viewer")');
+  return text;
+}
+const sheetUrl = (fmt) =>
+  `https://docs.google.com/spreadsheets/d/${CONFIG.CONTACTS_SHEET_ID}/gviz/tq?tqx=out:${fmt}&headers=1${CONFIG.CONTACTS_GID?`&gid=${CONFIG.CONTACTS_GID}`:''}&_=${Date.now()}`;
+
+async function loadContacts(){
+  try{
+    let rows;
+    try{ rows = parseGviz(await getText(sheetUrl('json'))); }
+    catch(e){ if(/not shared/.test(e.message)) throw e; rows = parseCSV(await getText(sheetUrl('csv'))); }
+    state.contacts = buildContacts(rows);
+    state.loaded = true;
+    const valid = state.contacts.filter(c=>c.valid).length;
+    $('#sub').textContent = `${state.contacts.length} contacts, ${valid} with a valid mobile number`;
+    $('#to').value = Math.min(CONFIG.MAX_PER_RUN, state.contacts.length) || 1;
+  }catch(err){
+    $('#sub').textContent = 'Could not load contacts: ' + (err.message||err);
+  }
+  refresh();
+}
+
+/* ---------- gateway (through /api/sms) ---------- */
+async function gateway(action, extra={}){
+  const res = await fetch(CONFIG.API,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action, user:state.creds.user, pass:state.creds.pass, ...extra })
+  });
+  const text = await res.text();
+  let data; try{ data = JSON.parse(text); }catch(_){ data = { raw:text }; }
+  return { ok:res.ok, status:res.status, data };
+}
+
+function loginMsg(t,ok){ const m=$('#login-msg'); m.textContent=t||''; m.className='msg'+(ok?' ok':''); }
+
+async function connect(){
+  const user=$('#user').value.trim(), pass=$('#pass').value;
+  if(!user||!pass){ loginMsg('Enter both the username and the password.'); return; }
+  const btn=$('#connect'); btn.disabled=true; btn.textContent='Connecting…'; loginMsg('');
+  state.creds={ user, pass };
+  try{
+    const r = await gateway('devices');
+    if(r.status===401 || r.status===403){ state.creds=null; loginMsg('Wrong username or password.'); }
+    else if(r.status===404 && r.data && r.data.raw){ state.creds=null; loginMsg('The /api/sms function was not found. Deploy the api folder together with this page.'); }
+    else if(!r.ok){ state.creds=null; loginMsg(`The gateway returned an error (${r.status}). ${(r.data&&(r.data.error||r.data.message))||''}`); }
+    else {
+      const devices = Array.isArray(r.data) ? r.data : [];
+      if(!devices.length){ state.creds=null; loginMsg('No device is registered on this account. Open the SMS Gateway app on the phone first.'); }
+      else {
+        state.devices=devices;
+        state.device = devices.find(d=>d.lastSeen) || devices[0];
+        $('#pass').value='';
+        showDevice();
+      }
+    }
+  }catch(e){
+    state.creds=null; loginMsg('Could not reach the server: ' + (e.message||e));
+  }
+  btn.disabled=false; btn.textContent='Connect';
+}
+
+function showDevice(){
+  $('#login-form').hidden=true; $('#device').hidden=false;
+  const pick=$('#dev-pick');
+  $('#dev-pick-wrap').hidden = state.devices.length<2;
+  pick.innerHTML='';
+  state.devices.forEach((d,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=d.name||d.id; pick.appendChild(o); });
+  pick.value = String(state.devices.indexOf(state.device));
+  pick.onchange=()=>{ state.device=state.devices[+pick.value]; fillDevice(); };
+  fillDevice();
+  ['#c-range','#c-msg','#c-send'].forEach(s=>$(s).hidden=false);
+  refresh();
+}
+function fillDevice(){
+  const d=state.device;
+  $('#dev-name').textContent = d.name || 'Device';
+  $('#dev-seen').textContent = d.lastSeen ? 'Last seen ' + new Date(d.lastSeen).toLocaleString() : 'Last seen unknown';
+  const sim=$('#sim'); sim.innerHTML='';
+  const cards = Array.isArray(d.simCards) && d.simCards.length ? d.simCards : [{simNumber:1},{simNumber:2}];
+  cards.forEach(s=>{
+    const o=document.createElement('option'); o.value=s.simNumber;
+    o.textContent = ['SIM '+s.simNumber, s.carrierName, s.phoneNumber].filter(Boolean).join(', ');
+    sim.appendChild(o);
+  });
+}
+function disconnect(){
+  state.creds=null; state.devices=[]; state.device=null;
+  $('#device').hidden=true; $('#login-form').hidden=false; loginMsg('');
+  ['#c-range','#c-msg','#c-send'].forEach(s=>$(s).hidden=true);
+}
+
+/* ---------- plan + preview ---------- */
+function currentPlan(){
+  const from=parseInt($('#from').value,10), to=parseInt($('#to').value,10);
+  return buildPlan(state.contacts, from, to, sentMap, $('#skipSent').checked, CONFIG.MAX_PER_RUN);
+}
+function refresh(){
+  const plan=$('#plan');
+  if(!state.loaded){ plan.className='plan err'; plan.textContent='Contacts are not loaded yet.'; $('#start').disabled=true; return; }
+  const p=currentPlan(); state.plan=p;
+  const text=$('#text').value;
+  if(p.error){
+    plan.className='plan err'; plan.textContent=p.error;
+  } else {
+    plan.className='plan';
+    const sk=p.skipped, bits=[];
+    if(sk.sent) bits.push(`${sk.sent} already sent`);
+    if(sk.invalid) bits.push(`${sk.invalid} without a valid mobile number`);
+    if(sk.shared) bits.push(`${sk.shared} sharing a number already in this run`);
+    plan.innerHTML = `Contacts <b>${p.from}</b> to <b>${p.end}</b>. Will send <b>${p.items.length}</b> message${p.items.length===1?'':'s'}.` + (bits.length?`<br>Skipped: ${bits.join(', ')}.`:'');
+  }
+  // message info
+  const first = p.items && p.items[0];
+  const sample = first ? fillTemplate(text, first.c) : text;
+  const info = smsParts(sample);
+  $('#count').textContent = info.len ? `${info.len} characters, about ${info.parts} SMS part${info.parts>1?'s':''} per person${info.unicode?' (Urdu or other Unicode text uses shorter parts)':''}.` : '';
+  const pv=$('#preview');
+  if(first && text.trim()){ pv.hidden=false; pv.innerHTML=''; const sm=document.createElement('small'); sm.textContent=`Preview for contact ${first.n} (${first.phone})`; pv.appendChild(sm); pv.appendChild(document.createTextNode(sample)); }
+  else pv.hidden=true;
+  $('#start').disabled = state.running || !state.creds || !!p.error || !p.items.length || !text.trim();
+  $('#start').textContent = p.items && p.items.length ? `Send ${p.items.length} message${p.items.length===1?'':'s'}` : 'Send messages';
+}
+
+/* ---------- sending ---------- */
+function setStatus(t){ $('#status').textContent=t; }
+function addLog(cls, left, right){
+  const li=document.createElement('li');
+  const a=document.createElement('span'); a.textContent=left; a.className='ur';
+  const b=document.createElement('span'); b.textContent=right; b.className=cls;
+  li.append(a,b);
+  const log=$('#log'); log.prepend(li);
+  while(log.children.length>80) log.lastChild.remove();
+}
+function counts(sent,fail,left){
+  $('#n-sent').textContent=sent; $('#n-fail').textContent=fail; $('#n-left').textContent=left;
+}
+const nowSec = () => Math.floor(Date.now()/1000);
+
+async function start(){
+  const p=currentPlan();
+  if(p.error || !p.items.length || !state.creds) return;
+  const text=$('#text').value;
+  if(!text.trim()) return;
+  const sim=parseInt($('#sim').value,10)||1;
+  if(!confirm(`Send ${p.items.length} SMS from SIM ${sim} (contacts ${p.from} to ${p.end})?`)) return;
+
+  state.running=true; state.stop=false; state.results=[];
+  $('#run').hidden=false; $('#stop').hidden=false; $('#download').hidden=true; $('#again').hidden=true;
+  $('#log').innerHTML=''; $('#bar').style.width='0';
+  $('#start').disabled=true;
+  ['#from','#to','#text','#skipSent'].forEach(s=>$(s).disabled=true);
+  let wake=null; try{ wake = await navigator.wakeLock?.request('screen'); }catch(_){}
+  window.onbeforeunload = e => { e.preventDefault(); e.returnValue=''; };
+
+  const items=p.items; let sent=0, fail=0, consecutive=0, i=0, stopReason='';
+  counts(0,0,items.length);
+
+  for(; i<items.length; i++){
+    if(state.stop){ stopReason='Stopped.'; break; }
+
+    // rate limits
+    let w;
+    while((w=waitSeconds(sendLog, nowSec(), CONFIG.MAX_15_MIN, CONFIG.MAX_1_HOUR))>0 && !state.stop){
+      setStatus(`Rate limit reached. Continuing in ${w >= 60 ? Math.ceil(w/60)+' min' : w+' s'}…`);
+      await sleep(1000);
+    }
+    if(state.stop){ stopReason='Stopped.'; break; }
+
+    const it=items[i];
+    setStatus(`Sending ${i+1} of ${items.length}…`);
+    const body = { textMessage:{ text: fillTemplate(text, it.c) }, deviceId: state.device.id, phoneNumbers:[it.phone], simNumber: sim, ttl: 3600, priority: 0 };
+    let r;
+    try{ r = await gateway('send',{ payload: body }); }
+    catch(e){ r = { ok:false, status:0, data:{ error:String(e.message||e) } }; }
+
+    const when = new Date().toLocaleString();
+    if(r.status===401 || r.status===403){
+      stopReason='Stopped: the gateway rejected the username or password.';
+      addLog('s-fail', it.c.name, 'Rejected'); break;
+    }
+    if(r.ok && r.data && r.data.id){
+      sent++; consecutive=0;
+      const t=nowSec();
+      sendLog.push(t); sendLog = sendLog.filter(x=>t-x<3600);
+      sentMap[it.phone]={ id:r.data.id, t }; store.set('sms.sent',sentMap); store.set('sms.log',sendLog);
+      state.results.push([it.n,it.c.name,it.phone,r.data.id,r.data.state||'Pending',when,'API accepted']);
+      addLog('s-sent', `${it.n}. ${it.c.name}`, 'Sent');
+    } else {
+      fail++; consecutive++;
+      const why = (r.data&&(r.data.error||r.data.message)) || (r.status?`HTTP ${r.status}`:'No reply');
+      state.results.push([it.n,it.c.name,it.phone,'','Failed',when,why]);
+      addLog('s-fail', `${it.n}. ${it.c.name}`, 'Failed');
+      if(consecutive>=CONFIG.MAX_CONSECUTIVE_FAILS){
+        stopReason=`Stopped after ${consecutive} failures in a row. Last error: ${why}`; i++; break;
+      }
+    }
+    counts(sent,fail,items.length-i-1);
+    $('#bar').style.width = ((i+1)/items.length*100).toFixed(1)+'%';
+    if(i<items.length-1) await sleep(CONFIG.DELAY_MS);
+  }
+
+  const remaining = Math.max(0, items.length - sent - fail);
+  counts(sent,fail,remaining);
+  setStatus(stopReason || `Finished. ${sent} sent, ${fail} failed.`);
+  state.running=false; window.onbeforeunload=null;
+  try{ wake && wake.release(); }catch(_){}
+  $('#stop').hidden=true; $('#download').hidden=false; $('#again').hidden=false;
+}
+
+function downloadResults(){
+  const header=['Contact','Name','Phone','MessageID','Status','Timestamp','Note'];
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv='\ufeff'+[header,...state.results].map(r=>r.map(esc).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='sms_results_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- wiring ---------- */
+$('#connect').onclick=connect;
+$('#pass').addEventListener('keydown',e=>{ if(e.key==='Enter') connect(); });
+$('#showpw').onclick=()=>{ const p=$('#pass'); const show=p.type==='password'; p.type=show?'text':'password'; $('#showpw').textContent=show?'Hide':'Show'; };
+$('#disconnect').onclick=()=>{ if(state.running){ alert('Stop the current run first.'); return; } disconnect(); };
+['#from','#to','#skipSent'].forEach(s=>$(s).addEventListener('input',refresh));
+$('#text').value = store.get('sms.text','');
+$('#text').addEventListener('input',()=>{ store.set('sms.text',$('#text').value); refresh(); });
+$('#start').onclick=start;
+$('#stop').onclick=()=>{ state.stop=true; setStatus('Stopping after this message…'); };
+$('#download').onclick=downloadResults;
+$('#again').onclick=()=>{
+  ['#from','#to','#text','#skipSent'].forEach(s=>$(s).disabled=false);
+  $('#run').hidden=true; refresh(); window.scrollTo({top:$('#c-range').offsetTop-10,behavior:'smooth'});
+};
+$('#clear-sent').onclick=()=>{
+  if(state.running) return;
+  if(confirm('Forget which numbers were already sent from this browser? They may receive the message again if you send to them.')){
+    sentMap={}; store.set('sms.sent',sentMap); refresh();
+  }
+};
+
+refresh();
+loadContacts();
+</script>
+</body>
+</html>
